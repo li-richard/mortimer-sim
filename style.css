@@ -72,11 +72,11 @@ a { color: var(--gold); }
 
 /* ————— controls ————— */
 
+/* centered over the tier board column, not the whole page */
 .controls {
   display: flex; flex-wrap: wrap; gap: 18px 28px;
   justify-content: center; align-items: flex-end;
-  padding: 22px 20px 6px;
-  max-width: 1440px; margin: 0 auto;
+  padding: 0 0 2px;
 }
 .ctl label {
   display: block;
@@ -335,9 +335,11 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 
 .layout {
   display: grid; grid-template-columns: minmax(0, 1fr) 340px;
-  gap: 26px; max-width: 1440px; margin: 18px auto 0; padding: 0 20px;
+  gap: 26px; max-width: 1440px; margin: 22px auto 0; padding: 0 20px;
   align-items: start;
 }
+/* controls sit above the board, inside its column */
+.col-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } .results { position: static; } }
 
 /* ————— shared bits (drawer) ————— */
