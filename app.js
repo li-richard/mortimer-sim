@@ -209,6 +209,24 @@ function chipHtml(t, odds) {
     ${t.name}<small>${t.level}</small><span class="c-off">${off}</span></div>`;
 }
 
+/* Custom listbox — a native <select> can't have its popup list styled
+ * (the OS draws it), so the card uses this instead.
+ * opts: [{ val, label }]; `kind` is "tier" or "rule". */
+function selectHtml(kind, value, opts, label, disabled) {
+  const cur = opts.find(o => o.val === value) || opts[0];
+  return `<div class="sel ${disabled ? "sel-off" : ""}" data-sel="${kind}">
+    <button type="button" class="sel-btn" aria-haspopup="listbox" aria-expanded="false"
+      aria-label="${esc(label)}" ${disabled ? "disabled" : ""}>
+      <span class="sel-val">${esc(cur.label)}</span><span class="sel-caret">▾</span>
+    </button>
+    <ul class="sel-menu" role="listbox" aria-label="${esc(label)}" hidden>
+      ${opts.map(o => `<li role="option" tabindex="-1" data-val="${esc(o.val)}"
+        aria-selected="${o.val === value}" class="${o.val === value ? "on" : ""}">
+        <span class="sel-tick">${o.val === value ? "✓" : ""}</span>${esc(o.label)}</li>`).join("")}
+    </ul>
+  </div>`;
+}
+
 function popoverHtml(t, odds) {
   const blocked = state.blocked.includes(t.name);
   const tooHigh = t.level > state.level;
@@ -229,14 +247,13 @@ function popoverHtml(t, odds) {
   ].join("");
   const tr = state.taskRules[t.name] || {};
   const curTier = state.placement[t.name];
-  const tierOpts = state.tiers.map(x =>
-    `<option value="${x.id}" ${x.id === curTier ? "selected" : ""}>${esc(x.name)}</option>`).join("");
-  const ruleOpts = cur => [
-    `<option value="none" ${!cur || cur === "none" ? "selected" : ""}>no effect</option>`,
-    `<option value="up" ${cur === "up" ? "selected" : ""}>▲ up one tier</option>`,
-    `<option value="down" ${cur === "down" ? "selected" : ""}>▼ down one tier</option>`,
-    ...state.tiers.map(x => `<option value="to:${x.id}" ${cur === "to:" + x.id ? "selected" : ""}>→ ${esc(x.name)}</option>`),
-  ].join("");
+  const tierOpts = state.tiers.map(x => ({ val: x.id, label: x.name }));
+  const ruleOpts = [
+    { val: "none", label: "no effect" },
+    { val: "up", label: "▲ up one tier" },
+    { val: "down", label: "▼ down one tier" },
+    ...state.tiers.map(x => ({ val: "to:" + x.id, label: "→ " + x.name })),
+  ];
   return `<div class="pop-caret"></div>
     <div class="ce-head">
       <b>${t.name}</b>
@@ -255,13 +272,13 @@ function popoverHtml(t, odds) {
     <div class="pop-rows">
       <div class="rm-row rm-tier">
         <span class="rm-name">Tier</span>
-        <select class="rm-sel" data-tiersel aria-label="Tier for ${t.name}">${tierOpts}</select>
+        ${selectHtml("tier", curTier, tierOpts, `Tier for ${t.name}`, false)}
       </div>
       ${creatureModDefs(t).map(d => {
         const unlocked = !d.unlock || state.modUnlocked[d.unlock];
         return `<div class="rm-row ${unlocked ? "" : "rm-off"}" data-modkey="${d.key}">
           <span class="rm-name">${d.name} <small>${d.range}</small>${unlocked ? "" : ' <small class="rm-lock">locked</small>'}</span>
-          <select class="rm-sel" data-rulesel aria-label="${d.name} rule for ${t.name}" ${unlocked ? "" : "disabled"}>${ruleOpts(tr[d.key])}</select>
+          ${selectHtml("rule", tr[d.key] || "none", ruleOpts, `${d.name} rule for ${t.name}`, !unlocked)}
         </div>`;
       }).join("")}
     </div>`;
@@ -615,9 +632,62 @@ $("add-tier").addEventListener("click", () => {
 
 const popEl = $("popover");
 
+/* ——— custom listbox behaviour ——— */
+
+function closeMenus(except) {
+  popEl.querySelectorAll(".sel").forEach(sel => {
+    if (sel === except) return;
+    sel.querySelector(".sel-menu").hidden = true;
+    sel.querySelector(".sel-btn").setAttribute("aria-expanded", "false");
+    sel.classList.remove("open");
+  });
+}
+
+function openMenu(sel) {
+  closeMenus(sel);
+  const menu = sel.querySelector(".sel-menu");
+  menu.hidden = false;
+  sel.classList.add("open");
+  sel.querySelector(".sel-btn").setAttribute("aria-expanded", "true");
+  // flip upward when there isn't room below
+  const r = sel.getBoundingClientRect();
+  menu.classList.toggle("menu-up", window.innerHeight - r.bottom < menu.offsetHeight + 12);
+  (menu.querySelector("li.on") || menu.querySelector("li"))?.focus();
+}
+
+/* Apply a chosen value from a listbox row. */
+function applySelValue(sel, val) {
+  const name = selectedName;
+  if (!name) return;
+  if (sel.dataset.sel === "tier") {
+    state.placement[name] = val;
+  } else {
+    const key = sel.closest(".rm-row").dataset.modkey;
+    const tr = state.taskRules[name] || (state.taskRules[name] = {});
+    if (val === "none") delete tr[key];
+    else tr[key] = val;
+    if (!Object.keys(tr).length) delete state.taskRules[name];
+  }
+  refresh();
+}
+
 popEl.addEventListener("click", e => {
+  // the card handles its own clicks; without this the click-away listener
+  // sees a node this handler already detached via refresh() and closes it
+  e.stopPropagation();
+  if (!selectedName) return;
+  const opt = e.target.closest("li[role=option]");
+  if (opt) { applySelValue(opt.closest(".sel"), opt.dataset.val); return; }
+  const selBtn = e.target.closest(".sel-btn");
+  if (selBtn) {
+    const sel = selBtn.closest(".sel");
+    if (sel.classList.contains("open")) closeMenus();
+    else openMenu(sel);
+    return;
+  }
+  closeMenus();
   const btn = e.target.closest("button");
-  if (!btn || !selectedName) return;
+  if (!btn) return;
   const name = selectedName;
   if (btn.dataset.act === "block") {
     if (state.blocked.includes(name)) state.blocked = state.blocked.filter(n => n !== name);
@@ -629,21 +699,32 @@ popEl.addEventListener("click", e => {
   }
 });
 
-popEl.addEventListener("change", e => {
-  if (!selectedName) return;
-  const name = selectedName;
-  if (e.target.hasAttribute("data-tiersel")) {
-    state.placement[name] = e.target.value;
-    refresh();
+popEl.addEventListener("keydown", e => {
+  const sel = e.target.closest(".sel");
+  if (!sel) return;
+  const menu = sel.querySelector(".sel-menu");
+  const opts = [...menu.querySelectorAll("li")];
+  const onBtn = !!e.target.closest(".sel-btn");
+  if (onBtn && ["Enter", " ", "ArrowDown", "ArrowUp"].includes(e.key)) {
+    e.preventDefault();
+    openMenu(sel);
     return;
   }
-  if (e.target.hasAttribute("data-rulesel")) {
-    const key = e.target.closest(".rm-row").dataset.modkey;
-    const tr = state.taskRules[name] || (state.taskRules[name] = {});
-    if (e.target.value === "none") delete tr[key];
-    else tr[key] = e.target.value;
-    if (!Object.keys(tr).length) delete state.taskRules[name];
-    refresh();
+  if (menu.hidden) return;
+  const i = opts.indexOf(e.target);
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const next = e.key === "ArrowDown"
+      ? Math.min(opts.length - 1, i + 1)
+      : Math.max(0, i - 1);
+    opts[next]?.focus();
+  } else if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    if (i !== -1) applySelValue(sel, opts[i].dataset.val);
+  } else if (e.key === "Escape" || e.key === "Tab") {
+    if (e.key === "Escape") e.stopPropagation();
+    closeMenus();
+    sel.querySelector(".sel-btn").focus();
   }
 });
 
