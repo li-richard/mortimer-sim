@@ -17,6 +17,12 @@ An interactive, dependency-free static site ([index.html](index.html), [app.js](
 
 The math lives in [math.js](math.js) (shared between the browser and node) and enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. Labels persist in `localStorage`.
 
+### Share codes
+
+**Copy share code** puts the whole board — tiers and their order, every creature's placement, modifier rules, blocks, Slayer level, tasks completed, Venators and the focused tier — into one url-safe string (~150 characters for a full board). **Paste share code** accepts the bare code, a `#c=…` fragment, or a full URL containing one. Opening `…/index.html#c=<code>` loads that board directly and then cleans the URL, so a code doubles as a share link.
+
+The codec is [share.js](share.js) (DOM-free, tested by [test/share-test.js](test/share-test.js)). Creatures are referenced by index in the task list and tiers by rank, so codes don't depend on internal ids. Unknown creature indices, out-of-range numbers, and non-Mortimer codes are rejected or clamped rather than corrupting the board.
+
 ### Export / import
 
 - **Export** downloads `mortimer-ledger-<date>.json`: the full setup (tiers in rank order with their creatures, per-creature modifier rules, blocks, Slayer level, tasks completed, Venators) plus a snapshot of the computed odds (per-tier hit and best-on-offer chances, per-creature offer chance and up/down movement chances). It is self-describing — tier references are stored by **rank**, not internal id, so the file survives a round trip and stays readable on its own. Rules that are currently inert (locked modifier type, or a move that clamps at the board's end) are still exported, so intent isn't silently dropped.
@@ -33,7 +39,9 @@ The math lives in [math.js](math.js) (shared between the browser and node) and e
 
 ### Tests
 
-`node test/math-test.js` verifies the math by independent routes rather than re-running the same enumeration: exact BigInt-rational complementary counting (P(event) via P(complement) over restricted tuples), hypergeometric closed forms for the equal-weights case, term-by-term hand-computed small pools, edge cases, the Σ appear = k invariant, and strategy formulas against truncated expectation series.
+`node test/math-test.js && node test/share-test.js`
+
+The math suite verifies the odds by independent routes rather than re-running the same enumeration: exact BigInt-rational complementary counting (P(event) via P(complement) over restricted tuples), hypergeometric closed forms for the equal-weights case, term-by-term hand-computed small pools, edge cases, the Σ appear = k invariant, and strategy formulas against truncated expectation series.
 
 Serve it from the repo root (any static server):
 

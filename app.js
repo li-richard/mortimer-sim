@@ -993,7 +993,96 @@ function resetLedger() {
   refresh();
 }
 
+/* ——— share codes ——— */
+
+const NAMES = TASKS.map(t => t.name);
+
+function currentShareCode() {
+  return MortimerShare.encode({
+    level: state.level,
+    tasksDone: state.tasksDone,
+    venators: state.venators,
+    focusRank: Math.max(1, state.tiers.findIndex(t => t.id === state.focusTier) + 1),
+    tiers: state.tiers.map(t => ({ name: t.name, creatures: state.tierOrder[t.id] || [] })),
+    blocked: state.blocked,
+    rules: Object.fromEntries(Object.entries(state.taskRules).map(([name, r]) => [
+      name,
+      Object.fromEntries(Object.entries(r).map(([k, v]) => {
+        if (v === "up" || v === "down") return [k, v];
+        const i = state.tiers.findIndex(x => "to:" + x.id === v);
+        return i === -1 ? [k, null] : [k, i + 1];
+      }).filter(([, v]) => v !== null)),
+    ])),
+  }, NAMES);
+}
+
+function applyBoard(board) {
+  state.tiers = board.tiers.map((t, i) => ({ id: "t" + (i + 1), name: t.name }));
+  state.tierSeq = state.tiers.length;
+  state.placement = {};
+  state.tierOrder = {};
+  board.tiers.forEach((t, i) => {
+    const id = state.tiers[i].id;
+    state.tierOrder[id] = t.creatures.slice();
+    for (const n of t.creatures) state.placement[n] = id;
+  });
+  state.level = board.level;
+  state.tasksDone = board.tasksDone;
+  state.venators = board.venators;
+  state.blocked = board.blocked.slice(0, MAX_BLOCKS);
+  state.focusTier = (state.tiers[board.focusRank - 1] || state.tiers[0]).id;
+  state.taskRules = {};
+  for (const [name, r] of Object.entries(board.rules)) {
+    const out = {};
+    for (const [k, v] of Object.entries(r)) {
+      if (v === "up" || v === "down") out[k] = v;
+      else if (state.tiers[v - 1]) out[k] = "to:" + state.tiers[v - 1].id;
+    }
+    if (Object.keys(out).length) state.taskRules[name] = out;
+  }
+  selectedName = null;
+  refresh();
+}
+
+async function copyShareCode() {
+  const code = currentShareCode();
+  try {
+    await navigator.clipboard.writeText(code);
+    flash(`Share code copied — ${code.length} characters`);
+  } catch (e) {
+    prompt("Copy this share code:", code);
+  }
+}
+
+function pasteShareCode() {
+  const input = prompt("Paste a share code or link:");
+  if (input === null) return;
+  try {
+    applyBoard(MortimerShare.decode(input, NAMES));
+    flash("Board loaded from share code");
+  } catch (err) {
+    alert("Couldn't read that code: " + err.message);
+  }
+}
+
+/* A brief status line under the controls — quieter than an alert. */
+let flashTimer = null;
+function flash(msg) {
+  let el = document.getElementById("flash");
+  if (!el) {
+    el = document.createElement("div");
+    el.id = "flash";
+    document.querySelector(".tb-head").appendChild(el);
+  }
+  el.textContent = msg;
+  el.classList.add("on");
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => el.classList.remove("on"), 2600);
+}
+
 const TOOLS = {
+  "copy-code": copyShareCode,
+  "paste-code": pasteShareCode,
   "export-json": () =>
     download(`mortimer-ledger-${stamp()}.json`, JSON.stringify(buildExport(), null, 2), "application/json"),
   "export-csv": exportCsv,
@@ -1091,4 +1180,13 @@ $("focus-tier").addEventListener("change", e => {
 });
 
 load();
+
+// a board can arrive in the URL: …/#c=<code>
+if (location.hash.startsWith("#c=")) {
+  try {
+    applyBoard(MortimerShare.decode(location.hash, NAMES));
+    history.replaceState(null, "", location.pathname + location.search);
+  } catch (e) { /* not ours — keep the saved board */ }
+}
+
 refresh();
