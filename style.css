@@ -201,7 +201,7 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 }
 .crea:active { cursor: grabbing; }
 .crea:hover { border-color: var(--hairline); }
-.crea.sel { border-color: var(--gold); color: var(--gold); }
+.crea.c-sel { border-color: var(--gold); color: var(--gold); }
 .crea small { color: var(--ink-3); margin-left: 5px; font-size: 10.5px; font-variant-numeric: tabular-nums; }
 .crea .c-off {
   margin-left: 7px; padding-left: 7px;
@@ -268,7 +268,7 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
   border-bottom: 1px solid var(--hairline-faint);
 }
 .pop-rows .rm-row:last-child { border-bottom: none; padding-bottom: 2px; }
-.pop-rows .rm-tier { border-bottom: 1px solid var(--hairline); }
+.pop-tier { color: var(--gold-dim); cursor: help; }
 
 @media (max-width: 720px) {
   .tier { flex-direction: column; }
@@ -362,7 +362,6 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 .sel-menu li:focus { outline: none; background: rgba(211,167,85,0.14); color: var(--gold); }
 .sel-menu li.on { color: var(--gold); }
 .sel-tick { width: 10px; flex: none; font-size: 10px; color: var(--gold-dim); }
-.rm-tier .rm-name { color: var(--gold-dim); }
 
 /* ————— results ————— */
 

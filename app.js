@@ -203,7 +203,7 @@ function chipHtml(t, odds) {
     : p !== undefined ? pct(p) : "—";
   const note = blocked ? " · blocked" : tooHigh ? ` · needs ${t.level} Slayer` : noQuest ? " · needs Blood Moon Rises" : "";
   return `<div class="crea ${blocked ? "c-blocked" : ""} ${tooHigh || noQuest ? "c-locked" : ""}
-      ${selectedName === t.name ? "sel" : ""} ${state.taskRules[t.name] ? "c-rules" : ""}"
+      ${selectedName === t.name ? "c-sel" : ""} ${state.taskRules[t.name] ? "c-rules" : ""}"
     draggable="true" data-name="${t.name}"
     title="${t.name} · lvl ${t.level}${t.weight === 8 ? " · weight 8" : ""}${note} — click to configure, drag to re-tier">
     ${t.name}<small>${t.level}</small><span class="c-off">${off}</span></div>`;
@@ -246,8 +246,7 @@ function popoverHtml(t, odds) {
     down > 0 ? `<span class="chip chip-b" title="Chance its modifier lands it in a worse tier">▼${Math.round(down * 100)}%</span>` : "",
   ].join("");
   const tr = state.taskRules[t.name] || {};
-  const curTier = state.placement[t.name];
-  const tierOpts = state.tiers.map(x => ({ val: x.id, label: x.name }));
+  const curTier = state.tiers[tierIndexOf(t.name)];
   const ruleOpts = [
     { val: "none", label: "no effect" },
     { val: "up", label: "▲ up one tier" },
@@ -268,12 +267,11 @@ function popoverHtml(t, odds) {
       </button>
       <button class="ce-close" data-act="close" title="Close">✕</button>
     </div>
-    <div class="pop-sub">assign ${t.assignMin}–${t.assignMax}${t.extendable ? " · extendable" : ""} · weighting ${t.weight}</div>
+    <div class="pop-sub">
+      <span class="pop-tier" title="Drag the chip to another tier to change this">in ${esc(curTier ? curTier.name : "—")}</span>
+      · assign ${t.assignMin}–${t.assignMax}${t.extendable ? " · extendable" : ""} · weighting ${t.weight}
+    </div>
     <div class="pop-rows">
-      <div class="rm-row rm-tier">
-        <span class="rm-name">Tier</span>
-        ${selectHtml("tier", curTier, tierOpts, `Tier for ${t.name}`, false)}
-      </div>
       ${creatureModDefs(t).map(d => {
         const unlocked = !d.unlock || state.modUnlocked[d.unlock];
         return `<div class="rm-row ${unlocked ? "" : "rm-off"}" data-modkey="${d.key}">
@@ -655,19 +653,15 @@ function openMenu(sel) {
   (menu.querySelector("li.on") || menu.querySelector("li"))?.focus();
 }
 
-/* Apply a chosen value from a listbox row. */
+/* Apply a chosen modifier rule from a listbox row. */
 function applySelValue(sel, val) {
   const name = selectedName;
   if (!name) return;
-  if (sel.dataset.sel === "tier") {
-    state.placement[name] = val;
-  } else {
-    const key = sel.closest(".rm-row").dataset.modkey;
-    const tr = state.taskRules[name] || (state.taskRules[name] = {});
-    if (val === "none") delete tr[key];
-    else tr[key] = val;
-    if (!Object.keys(tr).length) delete state.taskRules[name];
-  }
+  const key = sel.closest(".rm-row").dataset.modkey;
+  const tr = state.taskRules[name] || (state.taskRules[name] = {});
+  if (val === "none") delete tr[key];
+  else tr[key] = val;
+  if (!Object.keys(tr).length) delete state.taskRules[name];
   refresh();
 }
 
