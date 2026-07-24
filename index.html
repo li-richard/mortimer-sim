@@ -19,8 +19,14 @@
 </header>
 
 <main class="layout">
- <div class="col-main">
-  <section class="controls" aria-label="Settings">
+  <section class="tierboard" aria-label="Tier board">
+    <div class="tb-head">
+      <h2>The Tier Board</h2>
+      <p>Rank creatures top-to-bottom — the top tier is the best. Drag chips between tiers, drag the ⠿ grip to reorder tiers, click a chip for its modifier rules and blocks.</p>
+      <button id="add-tier" class="ghost">+ Add tier</button>
+    </div>
+
+  <div class="controls" aria-label="Settings">
   <div class="ctl">
     <label for="level">Slayer level</label>
     <input id="level" type="number" min="1" max="99" step="1" value="99">
@@ -50,17 +56,10 @@
     </div>
     <input id="import-file" type="file" accept="application/json,.json" hidden>
   </div>
-  </section>
+  </div>
 
-  <section class="tierboard" aria-label="Tier board">
-    <div class="tb-head">
-      <h2>The Tier Board</h2>
-      <p>Rank creatures top-to-bottom — the top tier is the best. Drag chips between tiers, drag the ⠿ grip to reorder tiers, click a chip for its modifier rules and blocks.</p>
-      <button id="add-tier" class="ghost">+ Add tier</button>
-    </div>
     <div id="tiers"></div>
   </section>
- </div>
 
   <aside class="results" aria-label="Odds">
     <div class="hero">

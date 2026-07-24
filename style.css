@@ -72,11 +72,18 @@ a { color: var(--gold); }
 
 /* ————— controls ————— */
 
-/* spans the tier board column, not the whole page */
+/* a strip inside the board panel, under its title */
 .controls {
-  display: flex; flex-wrap: wrap; gap: 18px 28px;
+  display: flex; flex-wrap: wrap; gap: 14px 28px;
   justify-content: space-between; align-items: flex-end;
-  padding: 0 2px 2px;
+  padding: 11px 16px 12px;
+  background: rgba(0, 0, 0, 0.16);
+  border-bottom: 1px solid var(--hairline);
+}
+/* once they wrap, spreading leaves odd gaps — pack left, gear stays right */
+@media (max-width: 1100px) {
+  .controls { justify-content: flex-start; }
+  .controls .ctl-end { margin-left: auto; }
 }
 .ctl label {
   display: block;
@@ -164,8 +171,7 @@ a { color: var(--gold); }
 }
 .tb-head {
   display: flex; align-items: baseline; gap: 14px;
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--hairline);
+  padding: 14px 16px 12px;
 }
 .tb-head h2 {
   font-family: var(--serif-display); font-weight: 400;
@@ -338,8 +344,6 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
   gap: 26px; max-width: 1440px; margin: 22px auto 0; padding: 0 20px;
   align-items: start;
 }
-/* controls sit above the board, inside its column */
-.col-main { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 @media (max-width: 880px) { .layout { grid-template-columns: 1fr; } .results { position: static; } }
 
 /* ————— shared bits (drawer) ————— */
