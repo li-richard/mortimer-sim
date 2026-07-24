@@ -144,8 +144,8 @@ a { color: var(--gold); }
 .step.cur .st-u { color: var(--ink); }
 
 /* not yet reached */
-.step:not(.on) { opacity: 0.55; border-style: dashed; }
-.step:not(.on):hover { opacity: 0.8; }
+.step:not(.on) { opacity: 0.5; }
+.step:not(.on):hover { opacity: 0.75; }
 
 .ghost { background: transparent; border: 1px solid transparent; color: var(--ink-3); }
 .ghost:hover { color: var(--bad-ink); border-color: var(--hairline-faint); }
