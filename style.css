@@ -571,3 +571,10 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
   max-width: 1440px; margin: 26px auto 40px; padding: 0 20px;
   text-align: center; font-size: 12.5px; color: var(--ink-3);
 }
+.colophon p { margin: 0 0 7px; }
+.colophon .warn {
+  color: var(--ink-2);
+  border: 1px solid var(--hairline-faint); border-radius: 3px;
+  display: inline-block; padding: 5px 12px; margin-bottom: 11px;
+}
+.colophon .credit { font-size: 11.5px; opacity: 0.85; }

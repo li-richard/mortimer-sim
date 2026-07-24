@@ -4,6 +4,10 @@ Simulating outcomes for **Mortimer**, the new Old School RuneScape Slayer Master
 
 Source: [Meet Mortimer: Your Newest Slayer Master](https://secure.runescape.com/m=news/meet-mortimer-your-newest-slayer-master?oldschool=1) (news post, 24 July 2026).
 
+> ⚠️ **Pre-release data.** Every number here comes from that blog, where Jagex describes the modifier ranges as *proposed*. Wyrmscraig launches 29 July 2026 and the figures may change. Verify against the game before relying on them.
+
+> Unofficial fan content. Not affiliated with or endorsed by Jagex. See [LICENSE](LICENSE) for how the code and the bundled artwork are licensed differently.
+
 ## The app: Mortimer's Ledger
 
 An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). The primary interface is a TierMaker-style **tier board** of purely *ordinal* tiers — the top tier is the best, and rank alone carries meaning (no good/bad labels). Every creature starts in the middle tier. Drag chips between tiers (with a live insertion marker; manual order is preserved), drag a tier's ⠿ grip to reorder tiers, and add/rename/delete tiers freely. Chips show each creature's chance of appearing in an offer; clicking one opens a floating card with its stat ranges, a block toggle (max 2, 120 pts each), and its per-modifier rules (tier changes are drag-only). Set your Slayer level, Venators quest status, and **tasks completed for Mortimer** — progression is automatic, so that one number derives which modifier types are unlocked (clue at 25, XP at 50, Superior at 75) and whether you get a third task choice (100). The results card then computes, for whichever tier you focus:
@@ -15,7 +19,7 @@ An interactive, dependency-free static site ([index.html](index.html), [app.js](
 
 **Per-task Mortifier rules** (click any chip): every offered task carries exactly one modifier, so for each creature you can declare that a given modifier moves it on the tier board — **▲ up one tier**, **▼ down one tier**, or **→ any specific tier**. Relative moves clamp at the board's ends. The card shows that creature's actual rolled ranges (e.g. Bloodveld's Superior modifier is +100–150%) and its chance of being moved up (▲) or down (▼) by whatever modifier rolls — uniform over applicable types per the FAQ, independent between the tasks of one offer. Creatures with no clue table roll from their remaining modifier types. Deleting a tier moves its creatures to the middle tier and clears rules that pointed at it.
 
-The math lives in [math.js](math.js) (shared between the browser and node) and enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. Labels persist in `localStorage`.
+The math lives in [math.js](math.js) (shared between the browser and node) and enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. The whole board persists in `localStorage`.
 
 ### Share codes
 
@@ -26,8 +30,8 @@ The codec is [share.js](share.js) (DOM-free, tested by [test/share-test.js](test
 ### Model assumptions
 
 - **Offer sets** are drawn by successive weighted draws without replacement — equivalent to "roll from the full pool, reroll duplicates", the natural implementation of the blog's no-duplicates rule. With equal weights this reduces to a uniform random subset.
-- **Each offer roll is independent** (after a skip or a completed task, the next set is a fresh roll), so roll counts are geometric: mean rolls until a desired offer = 1/p, mean skips before it = (1−p)/p.
-- **Patient strategy** (take desired if offered, else neutral, skip only all-bad sets): desired share of completed tasks = p_desired ∕ (p_desired + p_neutral); expected skips per completed task = p_allbad ∕ (1 − p_allbad).
+- **Each offer roll is independent** (after a skip or a completed task, the next set is a fresh roll), so roll counts are geometric: mean rolls until the focused tier appears = 1/p, mean skips before it = (1−p)/p.
+- **Skip economics** assume you skip every offer containing nothing in the focused tier or better: expected skips per kept offer = p_nothing ∕ (1 − p_nothing), priced at 100 points each.
 - **Modifier unlocks are progression, not choices.** The blog says modifiers unlock as you complete assignments, at fixed counts — you cannot decline one. Because each unlocked type is equally likely, unlocking *dilutes* any single type: a given modifier rolls 1-in-2 with two types unlocked and 1-in-5 with five. So a rule keyed to one modifier fires less often later in progression, even though the newly unlocked modifiers carry their own value. That dilution is real; the ability to avoid it is not.
 - Not modeled: the Slayer cape 10% same-task perk, and task storage.
 
@@ -40,7 +44,7 @@ The math suite verifies the odds by independent routes rather than re-running th
 Serve it from the repo root (any static server):
 
 ```bash
-python3 -m http.server 8742 --directory /Users/richard/dev/mortimer-sim
+python3 -m http.server 8742
 ```
 
 `data.js` is generated from `data/mortimer_tasks.csv` — regenerate rather than editing by hand if the data changes.
@@ -95,7 +99,7 @@ Note the 5th modifier boosts the chance to hit the **Superior unique drop table*
 
 ## Creature art
 
-`assets/creatures/*.png` are 120px thumbnails pulled from the [Old School RuneScape Wiki](https://oldschool.runescape.wiki) (CC BY-NC-SA 3.0; game assets © Jagex). They are stored locally so the app has no runtime dependency on the wiki. `assets/creatures/sources.json` records the source URL and byte size for each file, and the filename is the creature's slug — chips fall back to text alone if a file is missing.
+`assets/creatures/*.png` are 120px thumbnails pulled from the [Old School RuneScape Wiki](https://oldschool.runescape.wiki), used under [CC BY-NC-SA 3.0](https://creativecommons.org/licenses/by-nc-sa/3.0/); the game assets depicted are the property of Jagex Ltd. They are stored locally so the app has no runtime dependency on the wiki. `assets/creatures/sources.json` records the source URL and byte size for each file, and the filename is the creature's slug — chips fall back to text alone if a file is missing. Full terms, including what carries over if you redistribute them, are in [assets/creatures/ATTRIBUTION.md](assets/creatures/ATTRIBUTION.md).
 
 Two mappings are approximations, since the wiki has no single image for the task: **Warped Creatures** uses the [Warped Terrorbird](https://oldschool.runescape.wiki/w/Warped_Terrorbird), and **Custodian Stalkers** uses the baby custodian stalker (no adult image exists yet).
 
@@ -105,3 +109,9 @@ Two mappings are approximations, since the wiki has no single image for the task
 - [data/mortimer_tasks.csv](data/mortimer_tasks.csv) — normalized single-header version for loading into code. `N/A` in clue columns means that creature has no Clue Scroll modifier available. All modifier ranges are inclusive min/max; percentage columns are in percent units (e.g. `25` = 25%).
 
 Note: the blog page's HTML table lists Warped Creatures' quantity modifier as 50–100, but the official sheet says 30–80; we follow the sheet.
+
+## License
+
+The source code is MIT licensed — see [LICENSE](LICENSE).
+
+The bundled creature artwork is **not** MIT: it is CC BY-NC-SA 3.0 material from the Old School RuneScape Wiki, depicting assets owned by Jagex Ltd. If you fork or redistribute this project, those terms travel with the images — credit the wiki, keep the use non-commercial, and share alike. Removing `assets/creatures/` leaves the app fully functional (chips render as text).
