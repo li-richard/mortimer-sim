@@ -464,7 +464,7 @@ function renderControls() {
     return `<button data-at="${s.at}" class="step ${on ? "on" : ""} ${s === cur ? "cur" : ""}"
       aria-pressed="${s === cur}" title="${esc(s.note)}">
       <span class="st-n">${s.at}${s.at === THIRD_CHOICE_AT ? "+" : ""}</span>
-      <span class="st-u">${on ? "✓" : "○"} ${esc(s.gain)}</span>
+      <span class="st-u">${esc(s.gain)}</span>
     </button>`;
   }).join("");
 }

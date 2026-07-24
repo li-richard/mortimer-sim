@@ -122,16 +122,30 @@ a { color: var(--gold); }
 }
 .step .st-u { font-size: 11px; line-height: 1.1; color: var(--ink-3); }
 .step:hover { background: var(--panel-2); }
-.step.on { background: var(--panel-2); }
-.step.on .st-n { color: var(--gold-dim); }
-.step.on .st-u { color: var(--ink-2); }
-.step.cur {
-  border-color: var(--gold-dim);
-  box-shadow: inset 0 2px 0 var(--gold);
+
+/* completed steps read as a filled progress track */
+.step.on {
+  background: linear-gradient(rgba(211,167,85,0.20), rgba(211,167,85,0.10));
+  border-color: rgba(211,167,85,0.45);
+  box-shadow: inset 0 -2px 0 var(--gold-dim);
 }
-.step.cur + .step { border-left-color: var(--gold-dim); }
-.step.cur .st-n { color: var(--gold); }
+.step.on + .step { border-left-color: rgba(211,167,85,0.45); }
+.step.on .st-n { color: var(--gold); }
+.step.on .st-u { color: var(--ink-2); }
+.step.on:hover { background: linear-gradient(rgba(211,167,85,0.26), rgba(211,167,85,0.14)); }
+
+/* the step you're standing on */
+.step.cur {
+  background: linear-gradient(rgba(211,167,85,0.34), rgba(211,167,85,0.18));
+  border-color: var(--gold);
+  box-shadow: inset 0 -2px 0 var(--gold), 0 0 12px rgba(211,167,85,0.25);
+}
+.step.cur .st-n { color: var(--gold); text-shadow: 0 0 12px rgba(211,167,85,0.5); }
 .step.cur .st-u { color: var(--ink); }
+
+/* not yet reached */
+.step:not(.on) { opacity: 0.55; border-style: dashed; }
+.step:not(.on):hover { opacity: 0.8; }
 
 .ghost { background: transparent; border: 1px solid transparent; color: var(--ink-3); }
 .ghost:hover { color: var(--bad-ink); border-color: var(--hairline-faint); }
