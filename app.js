@@ -397,7 +397,11 @@ function renderTiers(odds) {
       </div>
       <div class="tier-drop" data-drop="${tier.id}">${members.map(t => chipHtml(t, odds)).join("")}</div>
     </div>`;
-  }).join("");
+  }).join("") + `
+    <button type="button" class="tier tier-add" title="Add a tier at the bottom of the board">
+      <span class="tier-side"><span class="ta-plus">+</span></span>
+      <span class="tier-drop ta-label">Add tier</span>
+    </button>`;
 }
 
 function renderResults(o) {
@@ -651,8 +655,15 @@ tiersEl.addEventListener("drop", e => {
 
 // ————— tier board events —————
 
+function addTier() {
+  state.tierSeq = Math.max(state.tierSeq || 0, state.tiers.length) + 1;
+  state.tiers.push({ id: "t" + state.tierSeq, name: "Tier " + (state.tiers.length + 1) });
+  refresh();
+}
+
 // chip selection
 tiersEl.addEventListener("click", e => {
+  if (e.target.closest(".tier-add")) { addTier(); return; }
   const chip = e.target.closest(".crea");
   if (chip) {
     selectedName = selectedName === chip.dataset.name ? null : chip.dataset.name;
@@ -689,12 +700,6 @@ tiersEl.addEventListener("change", e => {
   const t = state.tiers.find(x => x.id === e.target.closest(".tier")?.dataset.tier);
   if (!t) return;
   t.name = inp.value.trim() || t.name;
-  refresh();
-});
-
-$("add-tier").addEventListener("click", () => {
-  state.tierSeq = Math.max(state.tierSeq || 0, state.tiers.length) + 1;
-  state.tiers.push({ id: "t" + state.tierSeq, name: "Tier " + (state.tiers.length + 1) });
   refresh();
 });
 

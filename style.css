@@ -199,6 +199,29 @@ a { color: var(--gold); }
 .tier-grip:hover { color: var(--gold); }
 .tier-grip:active { cursor: grabbing; }
 
+/* the add-tier row: an empty tier-shaped bar under the lowest tier */
+.tier-add {
+  appearance: none; cursor: pointer; width: 100%;
+  padding: 0; margin: 0; text-align: left;
+  background: transparent;
+  border: none; border-top: 1px dashed var(--hairline-faint);
+  font-family: var(--body);
+  color: var(--ink-3);
+}
+.tier-add .tier-side {
+  justify-content: center;
+  border-right: 1px dashed var(--hairline-faint);
+}
+.tier-add .ta-plus { font-size: 15px; line-height: 1; }
+.tier-add .ta-label {
+  display: flex; align-items: center;
+  font-size: 13px; letter-spacing: 0.04em;
+  min-height: 34px;
+}
+.tier-add:hover { color: var(--gold); background: rgba(211,167,85,0.04); }
+.tier-add:hover .tier-side, .tier-add:hover { border-color: rgba(211,167,85,0.45); }
+.tier-add:focus-visible { outline: 1px solid var(--gold-dim); outline-offset: -2px; }
+
 #tier-marker {
   position: absolute; left: 0; right: 0; height: 2px;
   background: var(--gold); border-radius: 1px;
