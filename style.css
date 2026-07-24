@@ -326,13 +326,24 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 .rm-name small { color: var(--ink-3); font-size: 12px; font-variant-numeric: tabular-nums; margin-left: 4px; }
 .rm-name .rm-lock { color: var(--bad-ink); letter-spacing: 0.05em; }
 .rm-sel {
-  flex: none; width: 180px;
-  background: var(--panel); color: var(--ink-2);
+  flex: none; width: 190px;
+  appearance: none; -webkit-appearance: none;
+  background-color: var(--panel);
+  color: var(--ink-2);
   border: 1px solid var(--hairline-faint); border-radius: 3px;
   font-family: var(--body); font-size: 13.5px;
-  padding: 6px 8px;
+  padding: 6px 26px 6px 9px;
+  cursor: pointer;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--gold-dim) 50%),
+    linear-gradient(135deg, var(--gold-dim) 50%, transparent 50%);
+  background-position: calc(100% - 13px) 50%, calc(100% - 9px) 50%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
 }
-.rm-sel:hover { border-color: var(--hairline); }
+.rm-sel:hover { border-color: var(--gold-dim); color: var(--ink); }
+.rm-sel:focus { outline: 1px solid var(--gold-dim); outline-offset: 1px; }
+.rm-sel option { background: var(--panel); color: var(--ink); }
 .rm-sel:disabled { opacity: 0.35; cursor: not-allowed; }
 .rm-tier .rm-name { color: var(--gold-dim); }
 
