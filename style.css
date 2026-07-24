@@ -16,6 +16,7 @@
   --bad: #d03b3b;
   --bad-ink: #e06a6a;
   --neutral: #8b8071;
+  --ctl-h: 38px;
   --serif-display: "IM Fell English SC", Georgia, serif;
   --serif: "IM Fell English", Georgia, serif;
   --body: "Alegreya", Palatino, Georgia, serif;
@@ -84,7 +85,7 @@ a { color: var(--gold); }
   color: var(--ink-3); margin-bottom: 6px;
 }
 .ctl input[type="number"] {
-  width: 84px; padding: 7px 10px;
+  width: 84px; height: var(--ctl-h); padding: 0 10px;
   background: var(--panel); color: var(--ink);
   border: 1px solid var(--hairline); border-radius: 3px;
   font-family: var(--body); font-size: 16px;
@@ -99,19 +100,20 @@ a { color: var(--gold); }
 .seg button small { color: var(--ink-3); font-size: 12px; }
 .seg button + button { border-left: 1px solid var(--hairline-faint); }
 .seg button.on { background: var(--panel-2); color: var(--gold); }
-.toggle { border: 1px solid var(--hairline); border-radius: 3px; }
+.toggle { border: 1px solid var(--hairline); border-radius: 3px; height: var(--ctl-h); }
 .toggle.on { color: var(--desired-ink); }
 .toggle:not(.on) { color: var(--ink-3); text-decoration: line-through; }
 /* progression stepper */
 .steps { display: flex; align-items: stretch; position: relative; }
 .step {
   appearance: none; cursor: pointer;
+  height: var(--ctl-h);
   background: var(--panel); color: var(--ink-3);
   border: 1px solid var(--hairline-faint);
   border-right-width: 0;
-  padding: 5px 12px 6px;
+  padding: 0 12px;
   font-family: var(--body); text-align: center;
-  display: flex; flex-direction: column; gap: 1px;
+  display: flex; flex-direction: column; justify-content: center; gap: 1px;
   white-space: nowrap;
 }
 .step:first-child { border-radius: 3px 0 0 3px; }
@@ -420,7 +422,8 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
    Declared after .sel-menu so its width/placement overrides win. */
 .tools { width: auto; }
 .tools .sel-btn {
-  width: auto; padding: 7px 10px;
+  width: var(--ctl-h); height: var(--ctl-h); padding: 0;
+  justify-content: center;
   font-size: 15px; line-height: 1; color: var(--ink-2);
 }
 .tools .sel-btn:hover, .tools.open .sel-btn { color: var(--gold); }
