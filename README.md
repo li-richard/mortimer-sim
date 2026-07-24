@@ -97,7 +97,7 @@ Note the 5th modifier boosts the chance to hit the **Superior unique drop table*
 
 `assets/creatures/*.png` are 120px thumbnails pulled from the [Old School RuneScape Wiki](https://oldschool.runescape.wiki) (CC BY-NC-SA 3.0; game assets © Jagex). They are stored locally so the app has no runtime dependency on the wiki. `assets/creatures/sources.json` records the source URL and byte size for each file, and the filename is the creature's slug — chips fall back to text alone if a file is missing.
 
-Two mappings are approximations, since the wiki has no single image for the task: **Warped Creatures** uses the Warped Jelly, and **Custodian Stalkers** uses the baby custodian stalker (no adult image exists yet).
+Two mappings are approximations, since the wiki has no single image for the task: **Warped Creatures** uses the [Warped Terrorbird](https://oldschool.runescape.wiki/w/Warped_Terrorbird), and **Custodian Stalkers** uses the baby custodian stalker (no adult image exists yet).
 
 ## Data
 
