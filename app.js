@@ -445,19 +445,38 @@ function renderResults(o) {
     ? `this tier or better: ${pct(pOrBetter)} · ${k} offered per roll${rulesActive ? " · rules applied" : ""}`
     : "no creatures in the pool";
 
-  // stacked bar: distribution of the best tier on offer (2px gaps from flex gap)
-  const segs = state.tiers.map((t, j) => ({
+  /* Per-tier outcome chart. Two measures share each row:
+   *   best  = P(the best task on offer lands in this tier)  — sums to 1
+   *   any   = P(at least one offered task lands here)       — does not
+   * Bars are scaled to the largest "any" so the shapes stay comparable. */
+  const rows = state.tiers.map((t, j) => ({
     name: t.name,
-    p: o.bestTier ? o.bestTier[j] : 0,
+    best: o.bestTier ? o.bestTier[j] : 0,
+    any: o.tierHit ? o.tierHit[j] : 0,
     col: tierColor(j, m),
+    focus: j === fIdx,
   }));
-  $("bar").innerHTML = segs
-    .filter(s => s.p > 0.0005)
-    .map(s => `<div style="flex-grow:${(s.p * 1000).toFixed(0)};background:${s.col}" title="Best task on offer is “${esc(s.name)}”: ${pct(s.p)}"></div>`)
-    .join("");
-  $("legend").innerHTML = segs
-    .map(s => `<li><span class="swatch" style="background:${s.col}"></span>${esc(s.name)}<span class="val">${pct(s.p)}</span></li>`)
-    .join("");
+  const scale = Math.max(0.01, ...rows.map(r => r.any));
+  $("tierchart").innerHTML = rows.map(r => `
+    <div class="tc-row ${r.focus ? "tc-focus" : ""}" title="${esc(r.name)} — best on offer ${pct(r.best)}, appears ${pct(r.any)}">
+      <span class="tc-name">${esc(r.name)}</span>
+      <span class="tc-track">
+        <span class="tc-any" style="width:${(r.any / scale * 100).toFixed(1)}%;background:${r.col}"></span>
+        <span class="tc-best" style="width:${(r.best / scale * 100).toFixed(1)}%;background:${r.col}"></span>
+      </span>
+      <span class="tc-val">${pct(r.best)}</span>
+    </div>`).join("");
+
+  // how much of an offer the modifier rolls actually move between tiers
+  let up = 0, down = 0;
+  for (const t of pool) {
+    const a = o.appear[t.name] || 0;
+    const { up: u, down: d } = activeRules(t);
+    up += a * u; down += a * d;
+  }
+  $("tc-mig").innerHTML = (up + down) > 0.0005
+    ? `Modifiers move <b>${up.toFixed(2)}</b> of the ${k} offered tasks up a tier and <b>${down.toFixed(2)}</b> down, on average.`
+    : `No modifier rules are moving tasks between tiers.`;
 
   $("t-nothing").textContent = pool.length ? pct(pNothing) : "—";
   $("t-rolls").textContent = pFocus > 0 ? (1 / pFocus).toFixed(1) : "—";
