@@ -449,7 +449,7 @@ function renderResults(o) {
   $("fine").innerHTML = [
     `<b>${pool.length}</b> creatures in the pool · <b>${state.blocked.length}</b>/${MAX_BLOCKS} blocked${blockSpend ? ` (${blockSpend} pts)` : ""}.`,
     pOrBetter === 0
-      ? `Nothing can reach “${esc(focusName)}” — no creature sits there and no modifier rule moves one in, so holding out for it never pays off.`
+      ? ""
       : pNothing > 0
         ? `Skipping every offer with nothing “${esc(focusName)}”-or-better costs ≈ <b>${Math.round(skipsPerKept * SKIP_COST).toLocaleString()} pts</b> per kept offer (${skipsPerKept.toFixed(1)} skips per kept offer).`
         : `Every offer already contains “${esc(focusName)}” or better — no skipping needed.`,
