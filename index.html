@@ -32,7 +32,11 @@
     <button id="venators" class="toggle on" aria-pressed="true">Blood Moon Rises ✓</button>
   </div>
   <div class="ctl ctl-end">
+    <button id="export-json" class="ghost" title="Download your board, rules and computed odds as JSON">Export</button>
+    <button id="export-csv" class="ghost" title="Download the creature table as CSV">CSV</button>
+    <button id="import" class="ghost" title="Load a previously exported setup">Import</button>
     <button id="reset" class="ghost">Reset ledger</button>
+    <input id="import-file" type="file" accept="application/json,.json" hidden>
   </div>
 </section>
 

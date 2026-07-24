@@ -148,7 +148,9 @@ a { color: var(--gold); }
 .step:not(.on):hover { opacity: 0.75; }
 
 .ghost { background: transparent; border: 1px solid transparent; color: var(--ink-3); }
-.ghost:hover { color: var(--bad-ink); border-color: var(--hairline-faint); }
+.ghost:hover { color: var(--gold); border-color: var(--hairline-faint); }
+#reset:hover { color: var(--bad-ink); }
+.ctl-end { display: flex; gap: 2px; align-items: center; }
 
 /* ————— tier board ————— */
 

@@ -811,6 +811,158 @@ document.addEventListener("keydown", e => {
 
 window.addEventListener("resize", positionPopover);
 
+// ————— export / import —————
+
+const EXPORT_VERSION = 1;
+
+/* Everything needed to reproduce this board, plus a snapshot of what it
+ * currently computes (so an export is readable on its own). */
+function buildExport() {
+  const o = computeOdds();
+  const inPoolNames = new Set(o.pool.map(t => t.name));
+  return {
+    app: "mortimer-sim",
+    version: EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    source: "https://secure.runescape.com/m=news/meet-mortimer-your-newest-slayer-master?oldschool=1",
+    setup: {
+      slayerLevel: state.level,
+      tasksDone: state.tasksDone,
+      offersPerRoll: o.k,
+      venatorsUnlocked: state.venators,
+      modifiersUnlocked: ["points", "qty", ...UNLOCKS.filter(u => modUnlocked(u.key)).map(u => u.key)],
+      blocked: [...state.blocked],
+      focusTier: state.tiers.find(t => t.id === state.focusTier)?.name ?? null,
+    },
+    tiers: state.tiers.map((t, i) => ({
+      rank: i + 1,
+      name: t.name,
+      creatures: (state.tierOrder[t.id] || []).slice(),
+      chanceOffered: o.tierHit ? o.tierHit[i] : null,
+      chanceIsBestOnOffer: o.bestTier ? o.bestTier[i] : null,
+    })),
+    creatures: TASKS.map(t => {
+      const { up, down } = activeRules(t);
+      // rules are stored against internal tier ids; export them by rank so
+      // the file stays meaningful on its own and survives a round trip.
+      // Export every configured rule, including ones that are currently
+      // inert (locked modifier, or a move that clamps) — dropping them
+      // would quietly discard the user's intent.
+      const portable = raw => {
+        if (raw === "up" || raw === "down") return raw;
+        const i = state.tiers.findIndex(x => "to:" + x.id === raw);
+        return i === -1 ? null : `to-rank:${i + 1}`;
+      };
+      return {
+        name: t.name,
+        slayerLevel: t.level,
+        weight: t.weight,
+        tier: state.tiers[tierIndexOf(t.name)]?.name ?? null,
+        inPool: inPoolNames.has(t.name),
+        blocked: state.blocked.includes(t.name),
+        chanceOffered: o.appear[t.name] ?? 0,
+        chanceMovedUp: up,
+        chanceMovedDown: down,
+        modifierRules: Object.fromEntries(
+          Object.entries(state.taskRules[t.name] || {})
+            .map(([k, raw]) => [k, portable(raw)])
+            .filter(([, v]) => v)),
+      };
+    }),
+    notes: "Probabilities are exact (full enumeration of weighted draws without replacement), not simulated.",
+  };
+}
+
+function download(filename, text, type) {
+  const url = URL.createObjectURL(new Blob([text], { type }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+const stamp = () => new Date().toISOString().slice(0, 10);
+
+function exportCsv() {
+  const data = buildExport();
+  const modKeys = ["points", "qty", "clue", "xp", "sup"];
+  const head = ["creature", "slayer_level", "weight", "tier", "in_pool", "blocked",
+    "chance_offered", "chance_moved_up", "chance_moved_down", ...modKeys.map(k => "rule_" + k)];
+  const cell = v => {
+    const s = v === null || v === undefined ? "" : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const rows = data.creatures.map(c => [
+    c.name, c.slayerLevel, c.weight, c.tier, c.inPool, c.blocked,
+    c.chanceOffered.toFixed(6), c.chanceMovedUp.toFixed(6), c.chanceMovedDown.toFixed(6),
+    ...modKeys.map(k => c.modifierRules[k] ?? ""),
+  ].map(cell).join(","));
+  download(`mortimer-ledger-${stamp()}.csv`, [head.join(","), ...rows].join("\n"), "text/csv");
+}
+
+/* Restore a previously exported setup. Only the fields we wrote are read
+ * back; the results snapshot is derived, so it's ignored. */
+function applyImport(data) {
+  if (!data || data.app !== "mortimer-sim" || !Array.isArray(data.tiers) || !data.tiers.length) {
+    throw new Error("not a Mortimer's Ledger export");
+  }
+  const known = new Set(TASKS.map(t => t.name));
+  state.tiers = data.tiers.map((t, i) => ({ id: "t" + (i + 1), name: String(t.name || `Tier ${i + 1}`).slice(0, 24) }));
+  state.tierSeq = state.tiers.length;
+  state.placement = {};
+  state.tierOrder = {};
+  data.tiers.forEach((t, i) => {
+    const id = state.tiers[i].id;
+    state.tierOrder[id] = (Array.isArray(t.creatures) ? t.creatures : []).filter(n => known.has(n));
+    for (const n of state.tierOrder[id]) state.placement[n] = id;
+  });
+  const s = data.setup || {};
+  if (Number.isFinite(s.slayerLevel)) state.level = Math.max(1, Math.min(99, s.slayerLevel));
+  if (Number.isFinite(s.tasksDone)) state.tasksDone = Math.max(0, Math.min(999, s.tasksDone));
+  if (typeof s.venatorsUnlocked === "boolean") state.venators = s.venatorsUnlocked;
+  state.blocked = (Array.isArray(s.blocked) ? s.blocked : []).filter(n => known.has(n)).slice(0, MAX_BLOCKS);
+  const focus = state.tiers.find(t => t.name === s.focusTier);
+  state.focusTier = (focus || state.tiers[0]).id;
+  // rules arrive keyed by tier rank; bind them to the new tier ids
+  state.taskRules = {};
+  const modKeys = new Set(["points", "qty", "clue", "xp", "sup"]);
+  for (const c of Array.isArray(data.creatures) ? data.creatures : []) {
+    if (!known.has(c.name) || !c.modifierRules) continue;
+    const rules = {};
+    for (const [k, v] of Object.entries(c.modifierRules)) {
+      if (!modKeys.has(k) || typeof v !== "string") continue;
+      if (v === "up" || v === "down") rules[k] = v;
+      else if (v.startsWith("to-rank:")) {
+        const tier = state.tiers[Number(v.slice(8)) - 1];
+        if (tier) rules[k] = "to:" + tier.id;
+      }
+    }
+    if (Object.keys(rules).length) state.taskRules[c.name] = rules;
+  }
+  selectedName = null;
+  refresh();
+}
+
+$("export-json").addEventListener("click", () => {
+  download(`mortimer-ledger-${stamp()}.json`, JSON.stringify(buildExport(), null, 2), "application/json");
+});
+
+$("export-csv").addEventListener("click", exportCsv);
+
+$("import").addEventListener("click", () => $("import-file").click());
+
+$("import-file").addEventListener("change", e => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  file.text()
+    .then(txt => applyImport(JSON.parse(txt)))
+    .catch(err => alert("Couldn't import that file: " + err.message));
+  e.target.value = "";
+});
+
 // ————— control events —————
 
 $("level").addEventListener("change", e => {
