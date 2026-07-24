@@ -50,51 +50,64 @@
 
   /**
    * Exact enumeration of every ordered draw sequence.
-   * pool: [{ name, weight, dProb, bProb }] — per-slot probabilities that
-   *   the creature, with its rolled modifier, counts as desired / bad
-   *   (dProb + bProb ≤ 1; the remainder is neutral).
+   * pool: [{ name, weight, dProb, bProb, tierProbs? }] — per-slot
+   *   probabilities that the creature, with its rolled modifier, counts
+   *   as desired / bad (dProb + bProb ≤ 1; the remainder is neutral).
+   *   Optional tierProbs[j] = P(the rolled modifier lands the task in
+   *   tier j); when present (same length on every entry) the result
+   *   includes tierHit.
    * offers: number of tasks presented (clamped to pool size).
    *
    * Modifier rolls are independent across the k slots, so for a fixed
-   * creature set: P(no desired) = Π(1−dProb_i) and P(all bad) = Π bProb_i.
+   * creature set: P(no desired) = Π(1−dProb_i) and P(all bad) = Π bProb_i,
+   * and per tier j: P(no task in j) = Π(1−tierProbs_i[j]).
    *
-   * Returns { k, n, pDesired, pAllBad, pNeutral, appear } where
-   * appear[name] = P(name is among the k offered).
+   * Returns { k, n, pDesired, pAllBad, pNeutral, appear, tierHit } where
+   * appear[name] = P(name is among the k offered) and
+   * tierHit[j] = P(at least one offered task ends up in tier j).
    */
   function computeOdds(pool, offers) {
     const n = pool.length;
     const k = Math.min(offers, n);
     const appear = {};
-    if (k === 0) return { k, n, pDesired: 0, pAllBad: 0, pNeutral: 0, appear };
+    const m = n > 0 && Array.isArray(pool[0].tierProbs) ? pool[0].tierProbs.length : 0;
+    if (k === 0) {
+      return { k, n, pDesired: 0, pAllBad: 0, pNeutral: 0, appear,
+               tierHit: m ? new Array(m).fill(0) : null };
+    }
 
     const w = pool.map(t => t.weight);
     const d = pool.map(t => t.dProb);
     const b = pool.map(t => t.bProb);
+    const tp = m ? pool.map(t => t.tierProbs) : null;
     const totalW = w.reduce((a, x) => a + x, 0);
     const appearArr = new Array(n).fill(0);
+    const tierHit = m ? new Array(m).fill(0) : null;
     const used = new Array(n).fill(false);
     const chosen = [];
     let pDesired = 0, pAllBad = 0;
 
-    (function rec(prob, remW, noDesired, allBad) {
+    (function rec(prob, remW, noDesired, allBad, noTier) {
       if (chosen.length === k) {
         pDesired += prob * (1 - noDesired);
         pAllBad += prob * allBad;
         for (const i of chosen) appearArr[i] += prob;
+        if (m) for (let j = 0; j < m; j++) tierHit[j] += prob * (1 - noTier[j]);
         return;
       }
       for (let i = 0; i < n; i++) {
         if (used[i]) continue;
         used[i] = true; chosen.push(i);
         rec(prob * w[i] / remW, remW - w[i],
-            noDesired * (1 - d[i]), allBad * b[i]);
+            noDesired * (1 - d[i]), allBad * b[i],
+            m ? noTier.map((x, j) => x * (1 - tp[i][j])) : null);
         chosen.pop(); used[i] = false;
       }
-    })(1, totalW, 1, 1);
+    })(1, totalW, 1, 1, m ? new Array(m).fill(1) : null);
 
     pool.forEach((t, i) => { appear[t.name] = appearArr[i]; });
     const pNeutral = Math.max(0, 1 - pDesired - pAllBad);
-    return { k, n, pDesired, pAllBad, pNeutral, appear };
+    return { k, n, pDesired, pAllBad, pNeutral, appear, tierHit };
   }
 
   /**

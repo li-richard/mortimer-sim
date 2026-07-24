@@ -134,25 +134,32 @@ function normRule(v) {
   return "none";
 }
 
-/* Outcome class this creature ends up as under each of its applicable
+/* Tier index this creature ends up at under each of its applicable
  * unlocked modifiers (each equally likely to roll). */
-function slotClasses(t) {
+function slotTierIdxs(t) {
   const baseIdx = tierIndexOf(t.name);
   const r = state.taskRules[t.name] || {};
   return creatureModDefs(t)
     .filter(d => !d.unlock || state.modUnlocked[d.unlock])
-    .map(d => {
-      const idx = MortimerMath.resolveTier(baseIdx, normRule(r[d.key]), state.tiers.length);
-      return idx === null ? "neutral" : state.tiers[idx].cls;
-    });
+    .map(d => MortimerMath.resolveTier(baseIdx, normRule(r[d.key]), state.tiers.length));
+}
+
+function slotClasses(t) {
+  return slotTierIdxs(t).map(idx => idx === null ? "neutral" : state.tiers[idx].cls);
 }
 
 function computeOdds() {
   const pool = TASKS.filter(inPool);
-  const entries = pool.map(t => ({
-    name: t.name, weight: t.weight,
-    ...MortimerMath.slotProbs(slotClasses(t)),
-  }));
+  const m = state.tiers.length;
+  const entries = pool.map(t => {
+    const idxs = slotTierIdxs(t);
+    const tierProbs = new Array(m).fill(0);
+    for (const i of idxs) if (i !== null) tierProbs[i] += 1 / idxs.length;
+    return {
+      name: t.name, weight: t.weight, tierProbs,
+      ...MortimerMath.slotProbs(idxs.map(i => i === null ? "neutral" : state.tiers[i].cls)),
+    };
+  });
   const odds = MortimerMath.computeOdds(entries, state.offers);
   return { ...odds, pool, slot: Object.fromEntries(entries.map(e => [e.name, e])) };
 }
@@ -224,8 +231,8 @@ function drawerHtml(t, odds) {
     `<option value="down" ${cur === "down" ? "selected" : ""}>▼ down one tier</option>`,
     ...state.tiers.map(x => `<option value="to:${x.id}" ${cur === "to:" + x.id ? "selected" : ""}>→ ${esc(x.name)}</option>`),
   ].join("");
-  return `<div class="crea-editor" data-name="${t.name}">
-    <div class="ce-head">
+  return `<div class="crea crea-open" data-name="${t.name}">
+    <div class="ce-head" title="Click to collapse">
       <b>${t.name}</b>
       <span class="r-lvl">lvl ${t.level}</span>
       ${t.weight === 8 ? '<span class="r-w8" title="Reduced weighting: 8 instead of 10">w8</span>' : ""}
@@ -259,22 +266,23 @@ function renderTiers(odds) {
   for (const t of TASKS) (byTier[state.placement[t.name]] = byTier[state.placement[t.name]] || []).push(t);
   $("tiers").innerHTML = state.tiers.map((tier, i) => {
     const members = byTier[tier.id] || [];
-    let s = `
+    return `
     <div class="tier cls-${tier.cls}" data-tier="${tier.id}">
       <div class="tier-side">
         <button class="tier-cls" data-tact="cls" title="Counts as ${tier.cls} in the odds — click to cycle">${CLS_ICON[tier.cls]}</button>
-        <input class="tier-name" value="${esc(tier.name)}" aria-label="Tier name" maxlength="24">
+        <div class="tier-side-main">
+          <input class="tier-name" value="${esc(tier.name)}" aria-label="Tier name" maxlength="24">
+          <span class="tier-odds" title="Chance the next offer contains at least one task that ends up in this tier (after modifiers)">${odds.tierHit ? pct(odds.tierHit[i]) : "—"} of offers</span>
+        </div>
         <div class="tier-tools">
           <button data-tact="up" title="Move tier up" ${i === 0 ? "disabled" : ""}>↑</button>
           <button data-tact="down" title="Move tier down" ${i === state.tiers.length - 1 ? "disabled" : ""}>↓</button>
           <button data-tact="del" title="Delete tier (its creatures move to the default tier)" ${state.tiers.length <= 1 ? "disabled" : ""}>✕</button>
         </div>
       </div>
-      <div class="tier-drop" data-drop="${tier.id}">${members.map(t => chipHtml(t, odds)).join("")}</div>
+      <div class="tier-drop" data-drop="${tier.id}">${members.map(t =>
+        t.name === selectedName ? drawerHtml(t, odds) : chipHtml(t, odds)).join("")}</div>
     </div>`;
-    const sel = members.find(t => t.name === selectedName);
-    if (sel) s += drawerHtml(sel, odds);
-    return s;
   }).join("");
 }
 
@@ -385,18 +393,17 @@ tiersEl.addEventListener("drop", e => {
   refresh();
 });
 
-// chip selection + drawer controls
+// chip selection + inline card controls
 tiersEl.addEventListener("click", e => {
-  const editor = e.target.closest(".crea-editor");
-  if (editor) {
+  const open = e.target.closest(".crea-open");
+  if (open) {
     const btn = e.target.closest("button");
-    if (!btn) return;
-    const name = editor.dataset.name;
-    if (btn.dataset.act === "block") {
+    const name = open.dataset.name;
+    if (btn && btn.dataset.act === "block") {
       if (state.blocked.includes(name)) state.blocked = state.blocked.filter(n => n !== name);
       else if (state.blocked.length < MAX_BLOCKS) state.blocked.push(name);
       refresh();
-    } else if (btn.dataset.act === "close") {
+    } else if ((btn && btn.dataset.act === "close") || (!btn && e.target.closest(".ce-head"))) {
       selectedName = null;
       refresh();
     }
@@ -436,7 +443,7 @@ tiersEl.addEventListener("click", e => {
 });
 
 tiersEl.addEventListener("change", e => {
-  const editor = e.target.closest(".crea-editor");
+  const editor = e.target.closest(".crea-open");
   if (editor) {
     const name = editor.dataset.name;
     if (e.target.hasAttribute("data-tiersel")) {

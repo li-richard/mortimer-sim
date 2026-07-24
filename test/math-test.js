@@ -242,6 +242,39 @@ console.log("— seeded Monte Carlo of draw + modifier roll + promotion, full po
   check("outcomes partition 1 (mixed)", o.pDesired + o.pAllBad + o.pNeutral, 1, 1e-9);
 }
 
+// ————— per-tier hit probabilities —————
+
+console.log("— tierHit —");
+{
+  // deterministic tiers, equal weights: tierHit[j] = 1 − C(n−c_j,k)/C(n,k)
+  const n = 10, k = 3, tierOf = i => i % 4; // counts: tier0:3, tier1:3, tier2:2, tier3:2
+  const pool = Array.from({ length: n }, (_, i) => {
+    const tierProbs = [0, 0, 0, 0];
+    tierProbs[tierOf(i)] = 1;
+    return { name: "c" + i, weight: 5, dProb: tierOf(i) === 0 ? 1 : 0, bProb: 0, tierProbs };
+  });
+  const o = computeOdds(pool, k);
+  const counts = [3, 3, 2, 2];
+  counts.forEach((c, j) =>
+    check(`tierHit[${j}] hypergeometric`, o.tierHit[j], 1 - binom(n - c, k) / binom(n, k), 1e-9));
+  check("single desired tier: tierHit[0] = pDesired", o.tierHit[0], o.pDesired, 1e-12);
+
+  // fractional tier probs, k=2, hand-computed: X lands t0 w.p. .5/t1 .5; Y always t1; Z t0 .25/t1 .75
+  const pool2 = [
+    { name: "X", weight: 10, dProb: 0.5, bProb: 0, tierProbs: [0.5, 0.5] },
+    { name: "Y", weight: 20, dProb: 0, bProb: 0, tierProbs: [0, 1] },
+    { name: "Z", weight: 10, dProb: 0.25, bProb: 0, tierProbs: [0.25, 0.75] },
+  ];
+  const pXY = (10 / 40) * (20 / 30) + (20 / 40) * (10 / 20);
+  const pXZ = (10 / 40) * (10 / 30) + (10 / 40) * (10 / 30);
+  const pYZ = (20 / 40) * (10 / 20) + (10 / 40) * (20 / 30);
+  const hit0 = pXY * 0.5 + pXZ * (1 - 0.5 * 0.75) + pYZ * 0.25;
+  const o2 = computeOdds(pool2, 2);
+  check("fractional tierHit[0] hand-computed", o2.tierHit[0], hit0, 1e-12);
+  check("fractional tierHit[0] = pDesired (t0 is the desired tier)", o2.tierHit[0], o2.pDesired, 1e-12);
+  check("tierHit[1] hand-computed (only XZ can miss it)", o2.tierHit[1], 1 - pXZ * 0.5 * 0.25, 1e-12);
+}
+
 // ————— edge cases —————
 
 console.log("— edge cases —");
