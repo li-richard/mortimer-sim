@@ -32,10 +32,20 @@
     <button id="venators" class="toggle on" aria-pressed="true">Blood Moon Rises ✓</button>
   </div>
   <div class="ctl ctl-end">
-    <button id="export-json" class="ghost" title="Download your board, rules and computed odds as JSON">Export</button>
-    <button id="export-csv" class="ghost" title="Download the creature table as CSV">CSV</button>
-    <button id="import" class="ghost" title="Load a previously exported setup">Import</button>
-    <button id="reset" class="ghost">Reset ledger</button>
+    <div class="sel tools" id="tools">
+      <button type="button" class="sel-btn tools-btn" aria-haspopup="menu" aria-expanded="false"
+        aria-label="Tools" title="Export, import and reset">⚙</button>
+      <ul class="sel-menu tools-menu" role="menu" hidden>
+        <li role="menuitem" tabindex="-1" data-tool="export-json">
+          Export setup <small>JSON — board, rules and odds</small></li>
+        <li role="menuitem" tabindex="-1" data-tool="export-csv">
+          Export table <small>CSV — one row per creature</small></li>
+        <li role="menuitem" tabindex="-1" data-tool="import">
+          Import setup <small>load an exported JSON</small></li>
+        <li role="menuitem" tabindex="-1" data-tool="reset" class="danger">
+          Reset ledger <small>clear tiers, rules and blocks</small></li>
+      </ul>
+    </div>
     <input id="import-file" type="file" accept="application/json,.json" hidden>
   </div>
 </section>

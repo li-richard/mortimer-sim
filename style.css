@@ -149,8 +149,7 @@ a { color: var(--gold); }
 
 .ghost { background: transparent; border: 1px solid transparent; color: var(--ink-3); }
 .ghost:hover { color: var(--gold); border-color: var(--hairline-faint); }
-#reset:hover { color: var(--bad-ink); }
-.ctl-end { display: flex; gap: 2px; align-items: center; }
+
 
 /* ————— tier board ————— */
 
@@ -416,6 +415,28 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 .sel-menu li:focus { outline: none; background: rgba(211,167,85,0.14); color: var(--gold); }
 .sel-menu li.on { color: var(--gold); }
 .sel-tick { width: 10px; flex: none; font-size: 10px; color: var(--gold-dim); }
+
+/* tools menu — same component, gear trigger, right-aligned panel.
+   Declared after .sel-menu so its width/placement overrides win. */
+.tools { width: auto; }
+.tools .sel-btn {
+  width: auto; padding: 7px 10px;
+  font-size: 15px; line-height: 1; color: var(--ink-2);
+}
+.tools .sel-btn:hover, .tools.open .sel-btn { color: var(--gold); }
+.tools .sel-menu {
+  width: max-content; min-width: 220px;
+  left: auto; right: 0;
+}
+.tools .sel-menu li { display: block; padding: 7px 11px; white-space: nowrap; }
+.tools .sel-menu li small {
+  display: block; margin-top: 1px;
+  font-size: 11px; color: var(--ink-3);
+}
+.tools .sel-menu li:hover small, .tools .sel-menu li:focus small { color: var(--ink-2); }
+.tools .sel-menu li.danger:hover, .tools .sel-menu li.danger:focus {
+  background: rgba(208,59,59,0.14); color: var(--bad-ink);
+}
 
 /* ————— results ————— */
 

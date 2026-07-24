@@ -946,13 +946,82 @@ function applyImport(data) {
   refresh();
 }
 
-$("export-json").addEventListener("click", () => {
-  download(`mortimer-ledger-${stamp()}.json`, JSON.stringify(buildExport(), null, 2), "application/json");
+function resetLedger() {
+  state.tasksDone = 100;
+  state.blocked = [];
+  state.taskRules = {};
+  state.placement = {};
+  state.tierOrder = {};
+  state.tiers = defaultTiers();
+  state.tierSeq = 3;
+  state.focusTier = "t1";
+  selectedName = null;
+  refresh();
+}
+
+const TOOLS = {
+  "export-json": () =>
+    download(`mortimer-ledger-${stamp()}.json`, JSON.stringify(buildExport(), null, 2), "application/json"),
+  "export-csv": exportCsv,
+  "import": () => $("import-file").click(),
+  "reset": () => {
+    if (confirm("Reset the ledger? This clears your tiers, rules and blocks.")) resetLedger();
+  },
+};
+
+const toolsEl = $("tools");
+const toolsMenu = toolsEl.querySelector(".sel-menu");
+const toolsBtn = toolsEl.querySelector(".sel-btn");
+
+function closeTools() {
+  toolsMenu.hidden = true;
+  toolsEl.classList.remove("open");
+  toolsBtn.setAttribute("aria-expanded", "false");
+}
+
+function openTools() {
+  toolsMenu.hidden = false;
+  toolsEl.classList.add("open");
+  toolsBtn.setAttribute("aria-expanded", "true");
+  toolsMenu.querySelector("li")?.focus();
+}
+
+toolsEl.addEventListener("click", e => {
+  const item = e.target.closest("li[data-tool]");
+  if (item) {
+    closeTools();
+    TOOLS[item.dataset.tool]?.();
+    return;
+  }
+  if (e.target.closest(".sel-btn")) {
+    toolsEl.classList.contains("open") ? closeTools() : openTools();
+  }
 });
 
-$("export-csv").addEventListener("click", exportCsv);
+toolsEl.addEventListener("keydown", e => {
+  const items = [...toolsMenu.querySelectorAll("li")];
+  if (e.target.closest(".sel-btn") && ["Enter", " ", "ArrowDown"].includes(e.key)) {
+    e.preventDefault();
+    openTools();
+    return;
+  }
+  if (toolsMenu.hidden) return;
+  const i = items.indexOf(e.target);
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    items[e.key === "ArrowDown" ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1)]?.focus();
+  } else if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    if (i !== -1) { closeTools(); TOOLS[items[i].dataset.tool]?.(); }
+  } else if (e.key === "Escape" || e.key === "Tab") {
+    closeTools();
+    if (e.key === "Escape") toolsBtn.focus();
+  }
+});
 
-$("import").addEventListener("click", () => $("import-file").click());
+document.addEventListener("click", e => {
+  if (!toolsMenu.hidden && !e.target.closest("#tools")) closeTools();
+});
 
 $("import-file").addEventListener("change", e => {
   const file = e.target.files?.[0];
@@ -984,19 +1053,6 @@ $("venators").addEventListener("click", () => {
 
 $("focus-tier").addEventListener("change", e => {
   state.focusTier = e.target.value;
-  refresh();
-});
-
-$("reset").addEventListener("click", () => {
-  state.tasksDone = 100;
-  state.blocked = [];
-  state.taskRules = {};
-  state.placement = {};
-  state.tierOrder = {};
-  state.tiers = defaultTiers();
-  state.tierSeq = 3;
-  state.focusTier = "t1";
-  selectedName = null;
   refresh();
 });
 
