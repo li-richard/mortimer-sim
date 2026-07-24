@@ -72,11 +72,11 @@ a { color: var(--gold); }
 
 /* ————— controls ————— */
 
-/* centered over the tier board column, not the whole page */
+/* spans the tier board column, not the whole page */
 .controls {
   display: flex; flex-wrap: wrap; gap: 18px 28px;
-  justify-content: center; align-items: flex-end;
-  padding: 0 0 2px;
+  justify-content: space-between; align-items: flex-end;
+  padding: 0 2px 2px;
 }
 .ctl label {
   display: block;
