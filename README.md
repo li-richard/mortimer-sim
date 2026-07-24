@@ -23,12 +23,6 @@ The math lives in [math.js](math.js) (shared between the browser and node) and e
 
 The codec is [share.js](share.js) (DOM-free, tested by [test/share-test.js](test/share-test.js)). Creatures are referenced by index in the task list and tiers by rank, so codes don't depend on internal ids. Unknown creature indices, out-of-range numbers, and non-Mortimer codes are rejected or clamped rather than corrupting the board.
 
-### Export / import
-
-- **Export** downloads `mortimer-ledger-<date>.json`: the full setup (tiers in rank order with their creatures, per-creature modifier rules, blocks, Slayer level, tasks completed, Venators) plus a snapshot of the computed odds (per-tier hit and best-on-offer chances, per-creature offer chance and up/down movement chances). It is self-describing — tier references are stored by **rank**, not internal id, so the file survives a round trip and stays readable on its own. Rules that are currently inert (locked modifier type, or a move that clamps at the board's end) are still exported, so intent isn't silently dropped.
-- **CSV** downloads the creature table for spreadsheets: tier, pool/blocked status, offer chance, movement chances, and the rule set on each modifier.
-- **Import** restores a previously exported JSON, replacing the current board.
-
 ### Model assumptions
 
 - **Offer sets** are drawn by successive weighted draws without replacement — equivalent to "roll from the full pool, reroll duplicates", the natural implementation of the blog's no-duplicates rule. With equal weights this reduces to a uniform random subset.
