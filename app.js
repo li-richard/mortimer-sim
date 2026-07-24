@@ -398,9 +398,8 @@ function renderTiers(odds) {
       <div class="tier-drop" data-drop="${tier.id}">${members.map(t => chipHtml(t, odds)).join("")}</div>
     </div>`;
   }).join("") + `
-    <button type="button" class="tier tier-add" title="Add a tier at the bottom of the board">
-      <span class="tier-side"><span class="ta-plus">+</span></span>
-      <span class="tier-drop ta-label">Add tier</span>
+    <button type="button" class="tier-add" title="Click to add a tier, or drop a creature here to start one">
+      <span class="ta-plus">+</span> Add tier
     </button>`;
 }
 
@@ -602,6 +601,15 @@ tiersEl.addEventListener("dragover", e => {
     return;
   }
   if (!dragName) return;
+  const add = e.target.closest(".tier-add");
+  if (add) {
+    // dropping here starts a new tier holding the dragged creature
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    add.classList.add("drag-over");
+    hideDropMarker();
+    return;
+  }
   const zone = e.target.closest(".tier-drop");
   if (!zone) return;
   e.preventDefault();
@@ -611,6 +619,8 @@ tiersEl.addEventListener("dragover", e => {
 });
 
 tiersEl.addEventListener("dragleave", e => {
+  const add = e.target.closest(".tier-add");
+  if (add && !add.contains(e.relatedTarget)) add.classList.remove("drag-over");
   const zone = e.target.closest(".tier-drop");
   if (zone && !zone.contains(e.relatedTarget)) {
     zone.classList.remove("drag-over");
@@ -635,6 +645,15 @@ tiersEl.addEventListener("drop", e => {
     refresh();
     return;
   }
+  const addBar = e.target.closest(".tier-add");
+  if (addBar) {
+    e.preventDefault();
+    addBar.classList.remove("drag-over");
+    const name = dragName || e.dataTransfer.getData("text/plain");
+    dragName = null;
+    if (name && TASK_BY_NAME[name]) addTier(name);
+    return;
+  }
   const zone = e.target.closest(".tier-drop");
   if (!zone) return;
   e.preventDefault();
@@ -655,9 +674,19 @@ tiersEl.addEventListener("drop", e => {
 
 // ————— tier board events —————
 
-function addTier() {
+/* Append a tier; optionally seed it with a creature dropped onto the bar. */
+function addTier(withCreature) {
   state.tierSeq = Math.max(state.tierSeq || 0, state.tiers.length) + 1;
-  state.tiers.push({ id: "t" + state.tierSeq, name: "Tier " + (state.tiers.length + 1) });
+  const tier = { id: "t" + state.tierSeq, name: "Tier " + (state.tiers.length + 1) };
+  state.tiers.push(tier);
+  if (withCreature && TASK_BY_NAME[withCreature]) {
+    for (const arr of Object.values(state.tierOrder)) {
+      const i = arr.indexOf(withCreature);
+      if (i !== -1) arr.splice(i, 1);
+    }
+    state.placement[withCreature] = tier.id;
+    state.tierOrder[tier.id] = [withCreature];
+  }
   refresh();
 }
 
