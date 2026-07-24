@@ -178,7 +178,7 @@ function renderRows(odds) {
         </button>
         <button class="gear ${expanded.has(t.name) ? "open" : ""} ${state.taskRules[t.name] ? "set" : ""}"
           data-act="mods" aria-expanded="${expanded.has(t.name)}"
-          title="Which of this task's modifiers promote it">⚙</button>
+          title="${state.taskRules[t.name] ? "Modifier rules set · " : ""}which of this task's modifiers promote it">${expanded.has(t.name) ? "▾" : "▸"}</button>
       </div>
     </div>` + (expanded.has(t.name) ? editorHtml(t) : "");
   });
@@ -251,12 +251,22 @@ function refresh() {
 
 // ————— events —————
 
+const toggleExpand = name => {
+  if (expanded.has(name)) expanded.delete(name);
+  else expanded.add(name);
+  refresh();
+};
+
 $("rows").addEventListener("click", e => {
-  const btn = e.target.closest("button");
-  if (!btn) return;
   const holder = e.target.closest("[data-name]");
   if (!holder) return;
   const name = holder.dataset.name;
+  const btn = e.target.closest("button");
+  if (!btn) {
+    // anywhere on the row that isn't a control toggles the mod editor
+    if (holder.classList.contains("row")) toggleExpand(name);
+    return;
+  }
   if (btn.dataset.rule && holder.classList.contains("mods-editor")) {
     const key = btn.closest(".rm-row").dataset.modkey;
     const tr = state.taskRules[name] || (state.taskRules[name] = {});
@@ -268,9 +278,7 @@ $("rows").addEventListener("click", e => {
   }
   const act = btn.dataset.act;
   if (act === "mods") {
-    if (expanded.has(name)) expanded.delete(name);
-    else expanded.add(name);
-    refresh();
+    toggleExpand(name);
   } else if (act === "block") {
     if (state.blocked.includes(name)) state.blocked = state.blocked.filter(n => n !== name);
     else if (state.blocked.length < MAX_BLOCKS) state.blocked.push(name);

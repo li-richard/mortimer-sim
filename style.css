@@ -138,6 +138,8 @@ a { color: var(--gold); }
   border-bottom: 1px solid var(--hairline-faint);
 }
 .row:last-child { border-bottom: none; }
+.row { cursor: pointer; }
+.row:hover { background-color: rgba(255,255,255,0.018); }
 .row.locked { opacity: 0.38; }
 .row.is-desired { background: linear-gradient(90deg, rgba(12,163,12,0.10), transparent 55%); }
 .row.is-bad { background: linear-gradient(90deg, rgba(208,59,59,0.10), transparent 55%); }
