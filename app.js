@@ -442,11 +442,17 @@ function renderResults(o) {
   $("t-best").textContent = o.bestTier ? pct(o.bestTier[fIdx]) : "—";
 
   const blockSpend = state.blocked.length * BLOCK_COST;
-  const skipsPerTask = pNothing < 1 ? pNothing / (1 - pNothing) : Infinity;
   const focusName = state.tiers[fIdx].name;
+  // pOrBetter of 0 means the tier is unreachable — skipping never ends,
+  // so there is no finite cost to quote
+  const skipsPerKept = pOrBetter > 0 ? pNothing / pOrBetter : Infinity;
   $("fine").innerHTML = [
     `<b>${pool.length}</b> creatures in the pool · <b>${state.blocked.length}</b>/${MAX_BLOCKS} blocked${blockSpend ? ` (${blockSpend} pts)` : ""}.`,
-    pNothing > 0 && pNothing < 1 ? `Skipping every offer with nothing “${esc(focusName)}”-or-better costs ≈ <b>${Math.round(skipsPerTask * SKIP_COST)} pts</b> per kept offer (${(skipsPerTask * 100).toFixed(1)} skips per 100).` : "",
+    pOrBetter === 0
+      ? `Nothing can reach “${esc(focusName)}” — no creature sits there and no modifier rule moves one in, so holding out for it never pays off.`
+      : pNothing > 0
+        ? `Skipping every offer with nothing “${esc(focusName)}”-or-better costs ≈ <b>${Math.round(skipsPerKept * SKIP_COST).toLocaleString()} pts</b> per kept offer (${skipsPerKept.toFixed(1)} skips per kept offer).`
+        : `Every offer already contains “${esc(focusName)}” or better — no skipping needed.`,
     `Each offer roll is independent; “offers until one appears” is the mean of a geometric distribution, 1∕p.`,
   ].filter(Boolean).join(" ");
 }

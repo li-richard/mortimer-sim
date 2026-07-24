@@ -119,11 +119,23 @@
        m ? new Array(m).fill(1) : null,
        m ? new Array(m + 1).fill(1) : null);
 
-    pool.forEach((t, i) => { appear[t.name] = appearArr[i]; });
+    // summing many terms leaves values a few ULPs off 0 or 1; snap them so
+    // downstream ratios like p/(1−p) can't blow up on 1−0.9999999999999999
+    const EPS = 1e-9;
+    const snap = x => (x < EPS ? 0 : x > 1 - EPS ? 1 : x);
+
+    pool.forEach((t, i) => { appear[t.name] = snap(appearArr[i]); });
     const pNeutral = Math.max(0, 1 - pDesired - pAllBad);
+    if (m) {
+      for (let j = 0; j < m; j++) tierHit[j] = snap(tierHit[j]);
+      for (let j = 0; j <= m; j++) tierGE[j] = snap(tierGE[j]);
+    }
     // bestTier[j] = P(the best task on offer lands exactly in tier j)
-    const bestTier = m ? tierGE.slice(0, m).map((s, j) => Math.max(0, s - tierGE[j + 1])) : null;
-    return { k, n, pDesired, pAllBad, pNeutral, appear, tierHit, tierGE, bestTier };
+    const bestTier = m ? tierGE.slice(0, m).map((s, j) => snap(Math.max(0, s - tierGE[j + 1]))) : null;
+    return {
+      k, n, pDesired: snap(pDesired), pAllBad: snap(pAllBad), pNeutral: snap(pNeutral),
+      appear, tierHit, tierGE, bestTier,
+    };
   }
 
   /**

@@ -293,6 +293,30 @@ console.log("— tierHit —");
     check(`deterministic bestTier[${j}] = S_${j} − S_${j + 1}`, o3.bestTier[j], S(j) - S(j + 1), 1e-9);
 }
 
+// ————— degenerate tiers must be exactly 0 / 1, not a few ULPs off —————
+
+console.log("— unreachable tier snaps to exact 0/1 —");
+{
+  // the real pool, everyone in the middle tier of three, k=3: the top tier
+  // is unreachable, so P(nothing top-or-better) must be exactly 1 — summing
+  // ~22k terms otherwise lands on 0.9999999999999999 and 1−p explodes
+  const pool = TASKS.map(t => ({
+    name: t.name, weight: t.weight, tierProbs: [0, 1, 0],
+  }));
+  const o = computeOdds(pool, 3);
+  check("tierHit[0] is exactly 0", o.tierHit[0], 0, 0);
+  check("tierGE[1] is exactly 1", o.tierGE[1], 1, 0);
+  check("1 − tierGE[1] is exactly 0", 1 - o.tierGE[1], 0, 0);
+  check("bestTier[1] is exactly 1", o.bestTier[1], 1, 0);
+  check("p/(1−p) stays finite via the guard", 1 - o.tierGE[1] > 0 ? 1 / (1 - o.tierGE[1]) : 0, 0, 0);
+  // and the reachable case still isn't snapped away
+  const pool2 = TASKS.map((t, i) => ({
+    name: t.name, weight: t.weight, tierProbs: i === 0 ? [1, 0, 0] : [0, 1, 0],
+  }));
+  const o2 = computeOdds(pool2, 3);
+  check("a reachable tier keeps its real value", o2.tierHit[0] > 0.001 && o2.tierHit[0] < 0.999 ? 1 : 0, 1);
+}
+
 // ————— edge cases —————
 
 console.log("— edge cases —");
