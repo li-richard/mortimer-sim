@@ -13,7 +13,18 @@ An interactive, dependency-free static site ([index.html](index.html), [app.js](
 - Share of completed tasks that are desired under a patient strategy (skip only all-bad offers), and its point cost per task
 - Per-creature chance of appearing in an offer
 
-The math enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. Labels persist in `localStorage`.
+The math lives in [math.js](math.js) (shared between the browser and node) and enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. Labels persist in `localStorage`.
+
+### Model assumptions
+
+- **Offer sets** are drawn by successive weighted draws without replacement — equivalent to "roll from the full pool, reroll duplicates", the natural implementation of the blog's no-duplicates rule. With equal weights this reduces to a uniform random subset.
+- **Each offer roll is independent** (after a skip or a completed task, the next set is a fresh roll), so roll counts are geometric: mean rolls until a desired offer = 1/p, mean skips before it = (1−p)/p.
+- **Patient strategy** (take desired if offered, else neutral, skip only all-bad sets): desired share of completed tasks = p_desired ∕ (p_desired + p_neutral); expected skips per completed task = p_allbad ∕ (1 − p_allbad).
+- Not modeled: modifier types on offers (each unlocked type is equally likely, per the FAQ), the Slayer cape 10% same-task perk, and task storage.
+
+### Tests
+
+`node test/math-test.js` verifies the math by independent routes rather than re-running the same enumeration: exact BigInt-rational complementary counting (P(event) via P(complement) over restricted tuples), hypergeometric closed forms for the equal-weights case, term-by-term hand-computed small pools, edge cases, the Σ appear = k invariant, and strategy formulas against truncated expectation series.
 
 Serve it from the repo root (any static server):
 

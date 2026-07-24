@@ -1,10 +1,5 @@
-/* Mortimer's Ledger — exact offer-odds calculator.
- *
- * Model: Mortimer offers k tasks (2, or 3 after 100 completions) drawn from his
- * pool by weighted sampling WITHOUT replacement (the blog confirms no duplicate
- * creatures within one offer set). We enumerate every ordered draw sequence and
- * sum probabilities — exact, no simulation. Pool ≤ 29, k ≤ 3 → ≤ ~22k leaves.
- */
+/* Mortimer's Ledger — UI layer. All probability math lives in math.js
+ * (exact enumeration, no simulation) and is covered by test/math-test.js. */
 
 const LS_KEY = "mortimer-ledger-v1";
 const SKIP_COST = 100;
@@ -41,56 +36,28 @@ function labelOf(name) { return state.labels[name] || "neutral"; }
 
 function computeOdds() {
   const pool = TASKS.filter(inPool);
-  const n = pool.length;
-  const k = Math.min(state.offers, n);
-  const appear = {};
-  if (k === 0) return { pool, k, pDesired: 0, pAllBad: 0, pNeutral: 0, appear };
-
-  const w = pool.map(t => t.weight);
-  const lab = pool.map(t => labelOf(t.name));
-  const totalW = w.reduce((a, b) => a + b, 0);
-  const appearArr = new Array(n).fill(0);
-  const used = new Array(n).fill(false);
-  const chosen = [];
-  let pDesired = 0, pAllBad = 0;
-
-  (function rec(prob, remW, hasDesired, allBad) {
-    if (chosen.length === k) {
-      if (hasDesired) pDesired += prob;
-      else if (allBad) pAllBad += prob;
-      for (const i of chosen) appearArr[i] += prob;
-      return;
-    }
-    for (let i = 0; i < n; i++) {
-      if (used[i]) continue;
-      used[i] = true; chosen.push(i);
-      rec(prob * w[i] / remW, remW - w[i],
-          hasDesired || lab[i] === "desired", allBad && lab[i] === "bad");
-      chosen.pop(); used[i] = false;
-    }
-  })(1, totalW, false, true);
-
-  pool.forEach((t, i) => { appear[t.name] = appearArr[i]; });
-  const pNeutral = Math.max(0, 1 - pDesired - pAllBad);
-  return { pool, k, pDesired, pAllBad, pNeutral, appear };
+  const odds = MortimerMath.computeOdds(
+    pool.map(t => ({ name: t.name, weight: t.weight, label: labelOf(t.name) })),
+    state.offers);
+  return { ...odds, pool };
 }
 
 // ————— formatting —————
 
 const pct = x => (x * 100).toFixed(1) + "%";
 const pct0 = x => (x * 100).toFixed(0) + "%";
-function fmtMod([a, b], unit = "") {
-  return (a >= 0 && unit !== "%" ? "+" : "") + a + "–" + b + unit;
-}
 
 // ————— rendering —————
 
 const $ = id => document.getElementById(id);
 
 function detailLine(t) {
+  const qty = t.qty[0] < 0
+    ? `qty ${t.qty[0]} to ${t.qty[1]}`
+    : `qty +${t.qty[0]}–${t.qty[1]}`;
   const bits = [
     `assign ${t.assignMin}–${t.assignMax}${t.extendable ? " ext" : ""}`,
-    `qty ${t.qty[0] > 0 ? "+" : ""}${t.qty[0]}–${t.qty[1]}`,
+    qty,
     `pts +${t.pts[0]}–${t.pts[1]}`,
     `xp +${t.xp[0]}–${t.xp[1]}%`,
     `sup +${t.sup[0]}–${t.sup[1]}%`,
@@ -167,17 +134,18 @@ function renderResults(o) {
     .map(s => `<li><span class="swatch" style="background:${s.col}"></span>${s.name}<span class="val">${pct(s.p)}</span></li>`)
     .join("");
 
+  const st = MortimerMath.strategyStats(o, SKIP_COST);
   $("t-allbad").textContent = nBad ? pct(pB) : "0%";
-  $("t-rolls").textContent = pD > 0 ? (1 / pD).toFixed(1) : "—";
-  $("t-skipcost").textContent = pD > 0 ? Math.round(SKIP_COST * (1 - pD) / pD) + " pts" : "—";
-  $("t-patient").textContent = (pD + pN) > 0 ? pct0(pD / (pD + pN)) : "—";
+  $("t-rolls").textContent = pD > 0 ? st.offersPerDesired.toFixed(1) : "—";
+  $("t-skipcost").textContent = pD > 0 ? Math.round(st.skipUntilDesiredCost) + " pts" : "—";
+  $("t-patient").textContent = (pD + pN) > 0 ? pct0(st.patientDesiredShare) : "—";
 
   const blockSpend = state.blocked.length * BLOCK_COST;
-  const skipsPerTask = pB < 1 ? pB / (1 - pB) : Infinity;
+  const skipsPerTask = st.patientSkipsPerTask;
   $("fine").innerHTML = [
     `<b>${nDesired}</b> desired · <b>${nNeutral}</b> neutral · <b>${nBad}</b> bad · <b>${state.blocked.length}</b>/${MAX_BLOCKS} blocked${blockSpend ? ` (${blockSpend} pts)` : ""}.`,
     nBad ? `Skipping only all-bad offers costs ≈ <b>${Number.isFinite(skipsPerTask) ? Math.round(skipsPerTask * SKIP_COST) : "∞"} pts</b> per completed task (${(skipsPerTask * 100).toFixed(1)} skips per 100 tasks).` : "",
-    `Offers per roll are independent after a skip; “offers per desired task” is the geometric mean 1∕p.`,
+    `Each offer roll is independent; “offers per desired task” is the mean of a geometric distribution, 1∕p.`,
   ].filter(Boolean).join(" ");
 }
 
