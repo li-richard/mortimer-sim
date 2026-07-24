@@ -26,6 +26,15 @@ const UNLOCKS = [
 ];
 const THIRD_CHOICE_AT = 100;
 
+/* The progression breakpoints, in order. */
+const PROG = [
+  { at: 0, gain: "Points + Quantity", note: "Mortimer starts you with these two modifiers" },
+  { at: 25, gain: "Clue scrolls", note: "Clue Scroll modifier unlocks at 25 tasks" },
+  { at: 50, gain: "Slayer XP", note: "Slayer XP modifier unlocks at 50 tasks" },
+  { at: 75, gain: "Superior uniques", note: "Superior drop-rate modifier unlocks at 75 tasks" },
+  { at: 100, gain: "Third choice", note: "A third task choice unlocks at 100 tasks" },
+];
+
 const state = {
   level: 99,
   tasksDone: 100,
@@ -444,19 +453,20 @@ function renderResults(o) {
 
 function renderControls() {
   $("level").value = state.level;
-  $("tasks-done").value = state.tasksDone;
   const v = $("venators");
   v.classList.toggle("on", state.venators);
   v.setAttribute("aria-pressed", String(state.venators));
   v.textContent = state.venators ? "Blood Moon Rises ✓" : "Blood Moon Rises ✗";
-  // read-only progression readout — these unlock automatically
-  const stones = [
-    ...UNLOCKS.map(u => ({ name: u.name, at: u.at, on: state.tasksDone >= u.at })),
-    { name: "3rd choice", at: THIRD_CHOICE_AT, on: state.tasksDone >= THIRD_CHOICE_AT },
-  ];
-  $("milestones").innerHTML = stones.map(s =>
-    `<span class="ms ${s.on ? "on" : ""}" title="${s.on ? "Unlocked" : "Unlocks"} at ${s.at} tasks">
-      ${s.on ? "✓" : "○"} ${s.name}</span>`).join("");
+  // progression stepper: everything up to the chosen breakpoint is unlocked
+  const cur = PROG.filter(s => state.tasksDone >= s.at).pop() || PROG[0];
+  $("steps").innerHTML = PROG.map(s => {
+    const on = state.tasksDone >= s.at;
+    return `<button data-at="${s.at}" class="step ${on ? "on" : ""} ${s === cur ? "cur" : ""}"
+      aria-pressed="${s === cur}" title="${esc(s.note)}">
+      <span class="st-n">${s.at}${s.at === THIRD_CHOICE_AT ? "+" : ""}</span>
+      <span class="st-u">${on ? "✓" : "○"} ${esc(s.gain)}</span>
+    </button>`;
+  }).join("");
 }
 
 function refresh() {
@@ -802,8 +812,10 @@ $("level").addEventListener("change", e => {
   refresh();
 });
 
-$("tasks-done").addEventListener("change", e => {
-  state.tasksDone = Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 0)));
+$("steps").addEventListener("click", e => {
+  const b = e.target.closest("button[data-at]");
+  if (!b) return;
+  state.tasksDone = Number(b.dataset.at);
   refresh();
 });
 
