@@ -29,6 +29,8 @@ const state = {
   tierSeq: 3,
   // creature name -> tier id; every creature is always placed (default: neutral)
   placement: {},
+  // tier id -> ordered creature names (manual ordering within a tier)
+  tierOrder: {},
   // per-creature modifier rules: name -> { points|qty|clue|xp|sup: "up"|"down"|"to:<tierId>" }
   taskRules: {},
 };
@@ -88,6 +90,24 @@ function ensurePlacements() {
     const id = state.placement[t.name];
     if (!id || !state.tiers.some(x => x.id === id)) state.placement[t.name] = def;
   }
+  syncOrder();
+}
+
+/* Keep tierOrder consistent with placement: preserve manual order,
+ * drop stale names, append new members in data order. */
+function syncOrder() {
+  if (!state.tierOrder || typeof state.tierOrder !== "object") state.tierOrder = {};
+  const members = {};
+  for (const t of TASKS) (members[state.placement[t.name]] = members[state.placement[t.name]] || new Set()).add(t.name);
+  const next = {};
+  for (const tier of state.tiers) {
+    const mine = members[tier.id] || new Set();
+    const kept = (state.tierOrder[tier.id] || []).filter(n => mine.has(n));
+    const seen = new Set(kept);
+    for (const t of TASKS) if (mine.has(t.name) && !seen.has(t.name)) kept.push(t.name);
+    next[tier.id] = kept;
+  }
+  state.tierOrder = next;
 }
 
 // ————— pool + tiers —————
@@ -300,11 +320,11 @@ function renderPopover(odds) {
   positionPopover();
 }
 
+const TASK_BY_NAME = Object.fromEntries(TASKS.map(t => [t.name, t]));
+
 function renderTiers(odds) {
-  const byTier = {};
-  for (const t of TASKS) (byTier[state.placement[t.name]] = byTier[state.placement[t.name]] || []).push(t);
   $("tiers").innerHTML = state.tiers.map((tier, i) => {
-    const members = byTier[tier.id] || [];
+    const members = (state.tierOrder[tier.id] || []).map(n => TASK_BY_NAME[n]).filter(Boolean);
     return `
     <div class="tier cls-${tier.cls}" data-tier="${tier.id}">
       <div class="tier-side">
@@ -421,6 +441,18 @@ tiersEl.addEventListener("dragleave", e => {
   if (zone && !zone.contains(e.relatedTarget)) zone.classList.remove("drag-over");
 });
 
+/* Insertion position for a drop at (x, y) among the zone's chips,
+ * reading order (wrapped flex rows): before the first chip whose row
+ * is below the point, or whose center is right of it in the same row. */
+function insertionIndex(zone, x, y, excludeName) {
+  const chips = [...zone.querySelectorAll(".crea")].filter(c => c.dataset.name !== excludeName);
+  for (let i = 0; i < chips.length; i++) {
+    const r = chips[i].getBoundingClientRect();
+    if (y < r.top || (y <= r.bottom && x < r.left + r.width / 2)) return i;
+  }
+  return chips.length;
+}
+
 tiersEl.addEventListener("drop", e => {
   const zone = e.target.closest(".tier-drop");
   if (!zone) return;
@@ -428,7 +460,14 @@ tiersEl.addEventListener("drop", e => {
   const name = dragName || e.dataTransfer.getData("text/plain");
   dragName = null;
   if (!name || !zone.dataset.drop) return;
-  state.placement[name] = zone.dataset.drop;
+  const tid = zone.dataset.drop;
+  const idx = insertionIndex(zone, e.clientX, e.clientY, name);
+  state.placement[name] = tid;
+  for (const arr of Object.values(state.tierOrder)) {
+    const i = arr.indexOf(name);
+    if (i !== -1) arr.splice(i, 1);
+  }
+  (state.tierOrder[tid] = state.tierOrder[tid] || []).splice(idx, 0, name);
   refresh();
 });
 
@@ -565,6 +604,7 @@ $("reset").addEventListener("click", () => {
   state.blocked = [];
   state.taskRules = {};
   state.placement = {};
+  state.tierOrder = {};
   state.tiers = defaultTiers();
   state.tierSeq = 3;
   selectedName = null;
