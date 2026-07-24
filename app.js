@@ -223,6 +223,14 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(
 const $ = id => document.getElementById(id);
 const TASK_BY_NAME = Object.fromEntries(TASKS.map(t => [t.name, t]));
 
+/* Creature art lives in assets/creatures/<slug>.png (see that folder's
+ * sources.json for provenance). Drop the element if the file is missing
+ * rather than showing a broken-image icon. */
+const slug = name => name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+const imgHtml = (t, cls) =>
+  `<img class="${cls}" src="assets/creatures/${slug(t.name)}.png" alt="" loading="lazy"
+    draggable="false" onerror="this.remove()">`;
+
 /* Rules that actually apply (their modifier type is unlocked), as
  * { def, rule, targetIdx } plus the up/down chances they produce. */
 function activeRules(t) {
@@ -272,7 +280,7 @@ function chipHtml(t, odds) {
     draggable="true" data-name="${t.name}"
     title="${t.name} · lvl ${t.level}${t.weight === 8 ? " · weight 8" : ""}${note}${ruleNote}
 — click to configure, drag to re-tier">
-    ${t.name}<small>${t.level}</small><span class="c-off">${off}</span>${marks}</div>`;
+    ${imgHtml(t, "c-img")}${t.name}<small>${t.level}</small><span class="c-off">${off}</span>${marks}</div>`;
 }
 
 /* Custom listbox — a native <select> can't have its popup list styled
@@ -318,6 +326,7 @@ function popoverHtml(t, odds) {
   ];
   return `<div class="pop-caret"></div>
     <div class="ce-head">
+      ${imgHtml(t, "pop-img")}
       <b>${t.name}</b>
       <span class="r-lvl">lvl ${t.level}</span>
       ${t.weight === 8 ? '<span class="r-w8" title="Reduced weighting: 8 instead of 10">w8</span>' : ""}

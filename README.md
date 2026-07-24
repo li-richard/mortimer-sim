@@ -93,6 +93,12 @@ Note the 5th modifier boosts the chance to hit the **Superior unique drop table*
 - Task storage works (shared with the normal store slots) and preserves modifiers.
 - Slayer cape perk works: 10% chance of same task reassigned with the same length and modifiers.
 
+## Creature art
+
+`assets/creatures/*.png` are 120px thumbnails pulled from the [Old School RuneScape Wiki](https://oldschool.runescape.wiki) (CC BY-NC-SA 3.0; game assets © Jagex). They are stored locally so the app has no runtime dependency on the wiki. `assets/creatures/sources.json` records the source URL and byte size for each file, and the filename is the creature's slug — chips fall back to text alone if a file is missing.
+
+Two mappings are approximations, since the wiki has no single image for the task: **Warped Creatures** uses the Warped Jelly, and **Custodian Stalkers** uses the baby custodian stalker (no adult image exists yet).
+
 ## Data
 
 - [data/mortimer_tasks_official_sheet.csv](data/mortimer_tasks_official_sheet.csv) — raw CSV export of the [official Google Sheet](https://docs.google.com/spreadsheets/d/e/2PACX-1vSE_OR6P95Ofk9Ud38dc5wS_skvr4ZfBR-BEgWcTd3TnNWHQe56iwIOrU_-CVtzr65AsPe2qLMN3Asc/pubhtml?gid=0&single=true), untouched.

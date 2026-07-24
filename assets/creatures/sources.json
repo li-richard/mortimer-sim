@@ -1,0 +1,147 @@
+{
+ "Aberrant Spectres": {
+  "bytes": 29813,
+  "file": "assets/creatures/aberrant-spectres.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Aberrant_spectre.png/120px-Aberrant_spectre.png"
+ },
+ "Abyssal Demons": {
+  "bytes": 13423,
+  "file": "assets/creatures/abyssal-demons.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Abyssal_demon.png/120px-Abyssal_demon.png"
+ },
+ "Aquanites": {
+  "bytes": 16720,
+  "file": "assets/creatures/aquanites.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Aquanite.png/120px-Aquanite.png"
+ },
+ "Araxytes": {
+  "bytes": 14505,
+  "file": "assets/creatures/araxytes.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Araxyte_%28lv_96%29.png/120px-Araxyte_%28lv_96%29.png"
+ },
+ "Banshees": {
+  "bytes": 20306,
+  "file": "assets/creatures/banshees.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Banshee.png/120px-Banshee.png"
+ },
+ "Basilisks": {
+  "bytes": 7091,
+  "file": "assets/creatures/basilisks.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Basilisk.png/120px-Basilisk.png"
+ },
+ "Bloodveld": {
+  "bytes": 8822,
+  "file": "assets/creatures/bloodveld.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Bloodveld.png/120px-Bloodveld.png"
+ },
+ "Cave Crawlers": {
+  "bytes": 7146,
+  "file": "assets/creatures/cave-crawlers.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Cave_crawler_%281%29.png/120px-Cave_crawler_%281%29.png"
+ },
+ "Cave Horrors": {
+  "bytes": 21440,
+  "file": "assets/creatures/cave-horrors.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Cave_horror_%281%29.png/120px-Cave_horror_%281%29.png"
+ },
+ "Cockatrice": {
+  "bytes": 10227,
+  "file": "assets/creatures/cockatrice.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Cockatrice.png/120px-Cockatrice.png"
+ },
+ "Crawling Hands": {
+  "bytes": 8769,
+  "file": "assets/creatures/crawling-hands.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Crawling_Hand_%28level_7%29.png/120px-Crawling_Hand_%28level_7%29.png"
+ },
+ "Custodian Stalkers": {
+  "bytes": 26002,
+  "file": "assets/creatures/custodian-stalkers.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Baby_custodian_stalker.png/120px-Baby_custodian_stalker.png"
+ },
+ "Dark Beasts": {
+  "bytes": 8961,
+  "file": "assets/creatures/dark-beasts.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Dark_beast.png/120px-Dark_beast.png"
+ },
+ "Drakes": {
+  "bytes": 9238,
+  "file": "assets/creatures/drakes.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Drake.png/120px-Drake.png"
+ },
+ "Dust Devils": {
+  "bytes": 21177,
+  "file": "assets/creatures/dust-devils.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Dust_devil.png/120px-Dust_devil.png"
+ },
+ "Gargoyles": {
+  "bytes": 7055,
+  "file": "assets/creatures/gargoyles.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Gargoyle.png/120px-Gargoyle.png"
+ },
+ "Gryphons": {
+  "bytes": 15128,
+  "file": "assets/creatures/gryphons.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Gryphon.png/120px-Gryphon.png"
+ },
+ "Hydras": {
+  "bytes": 20419,
+  "file": "assets/creatures/hydras.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Hydra.png/120px-Hydra.png"
+ },
+ "Infernal Mages": {
+  "bytes": 21951,
+  "file": "assets/creatures/infernal-mages.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Infernal_Mage.png/120px-Infernal_Mage.png"
+ },
+ "Jellies": {
+  "bytes": 8862,
+  "file": "assets/creatures/jellies.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Jelly.png/120px-Jelly.png"
+ },
+ "Kurask": {
+  "bytes": 9034,
+  "file": "assets/creatures/kurask.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Kurask.png/120px-Kurask.png"
+ },
+ "Nechryael": {
+  "bytes": 29518,
+  "file": "assets/creatures/nechryael.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Nechryael.png/120px-Nechryael.png"
+ },
+ "Pyrefiends": {
+  "bytes": 23200,
+  "file": "assets/creatures/pyrefiends.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Pyrefiend.png/120px-Pyrefiend.png"
+ },
+ "Rockslugs": {
+  "bytes": 8987,
+  "file": "assets/creatures/rockslugs.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Rockslug.png/120px-Rockslug.png"
+ },
+ "Smoke Devils": {
+  "bytes": 14829,
+  "file": "assets/creatures/smoke-devils.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Smoke_devil.png/120px-Smoke_devil.png"
+ },
+ "Turoth": {
+  "bytes": 12516,
+  "file": "assets/creatures/turoth.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Turoth_%28lv_83%29.png/120px-Turoth_%28lv_83%29.png"
+ },
+ "Venators": {
+  "bytes": 13242,
+  "file": "assets/creatures/venators.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Venator_%281%29.png/120px-Venator_%281%29.png"
+ },
+ "Warped Creatures": {
+  "bytes": 11057,
+  "file": "assets/creatures/warped-creatures.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Warped_Jelly.png/120px-Warped_Jelly.png"
+ },
+ "Wyrms": {
+  "bytes": 9135,
+  "file": "assets/creatures/wyrms.png",
+  "src": "https://oldschool.runescape.wiki/images/thumb/Wyrm.png/120px-Wyrm.png"
+ }
+}
