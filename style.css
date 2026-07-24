@@ -102,6 +102,14 @@ a { color: var(--gold); }
 .toggle { border: 1px solid var(--hairline); border-radius: 3px; }
 .toggle.on { color: var(--desired-ink); }
 .toggle:not(.on) { color: var(--ink-3); text-decoration: line-through; }
+.milestones { display: flex; gap: 6px; align-items: center; padding-bottom: 6px; }
+.ms {
+  font-size: 12px; color: var(--ink-3); cursor: help;
+  border: 1px solid var(--hairline-faint); border-radius: 3px;
+  padding: 5px 8px; line-height: 1; white-space: nowrap;
+}
+.ms.on { color: var(--gold); border-color: var(--hairline); }
+
 .ghost { background: transparent; border: 1px solid transparent; color: var(--ink-3); }
 .ghost:hover { color: var(--bad-ink); border-color: var(--hairline-faint); }
 

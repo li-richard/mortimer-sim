@@ -17,13 +17,20 @@ function defaultTiers() {
   ];
 }
 
+/* Mortimer's progression is automatic, not opt-in: modifier types and the
+ * third task choice unlock at fixed task counts (blog, 24 Jul 2026). */
+const UNLOCKS = [
+  { key: "clue", at: 25, name: "Clue" },
+  { key: "xp", at: 50, name: "XP" },
+  { key: "sup", at: 75, name: "Superior" },
+];
+const THIRD_CHOICE_AT = 100;
+
 const state = {
   level: 99,
-  offers: 3,
+  tasksDone: 100,
   venators: true,
   blocked: [],  // names, max 2
-  // which optional modifier types are unlocked (points & quantity are always on)
-  modUnlocked: { clue: true, xp: true, sup: true },
   // ordered tier list, index 0 = best
   tiers: defaultTiers(),
   tierSeq: 3,
@@ -53,6 +60,13 @@ function load() {
     const labels = s.labels; // pre-tier-board saves labeled creatures directly
     delete s.labels;
     delete s.modRules;
+    // pre-progression saves toggled unlocks by hand; infer a task count
+    if (s.tasksDone === undefined) {
+      const u = s.modUnlocked || {};
+      s.tasksDone = s.offers === 3 ? 100 : u.sup ? 75 : u.xp ? 50 : u.clue ? 25 : 0;
+    }
+    delete s.modUnlocked;
+    delete s.offers;
     Object.assign(state, s);
     if (!Array.isArray(state.tiers) || !state.tiers.length) state.tiers = defaultTiers();
     // classes on tiers are gone — order alone carries meaning now
@@ -110,6 +124,14 @@ function syncOrder() {
   state.tierOrder = next;
 }
 
+// ————— progression (derived from tasks completed) —————
+
+const modUnlocked = key => {
+  const u = UNLOCKS.find(x => x.key === key);
+  return !u || state.tasksDone >= u.at;
+};
+const offerCount = () => (state.tasksDone >= THIRD_CHOICE_AT ? 3 : 2);
+
 // ————— pool + tiers —————
 
 function inPool(t) {
@@ -165,7 +187,7 @@ function slotTierIdxs(t) {
   const baseIdx = tierIndexOf(t.name);
   const r = state.taskRules[t.name] || {};
   return creatureModDefs(t)
-    .filter(d => !d.unlock || state.modUnlocked[d.unlock])
+    .filter(d => modUnlocked(d.unlock))
     .map(d => MortimerMath.resolveTier(baseIdx, normRule(r[d.key]), state.tiers.length));
 }
 
@@ -178,7 +200,7 @@ function computeOdds() {
     for (const i of idxs) if (i !== null) tierProbs[i] += 1 / idxs.length;
     return { name: t.name, weight: t.weight, tierProbs };
   });
-  const odds = MortimerMath.computeOdds(entries, state.offers);
+  const odds = MortimerMath.computeOdds(entries, offerCount());
   return { ...odds, pool, slot: Object.fromEntries(entries.map(e => [e.name, e])) };
 }
 
@@ -197,7 +219,7 @@ const TASK_BY_NAME = Object.fromEntries(TASKS.map(t => [t.name, t]));
 function activeRules(t) {
   const tr = state.taskRules[t.name] || {};
   const baseIdx = tierIndexOf(t.name);
-  const defs = creatureModDefs(t).filter(d => !d.unlock || state.modUnlocked[d.unlock]);
+  const defs = creatureModDefs(t).filter(d => modUnlocked(d.unlock));
   const rules = defs
     .map(d => ({ def: d, raw: tr[d.key] }))
     .filter(r => r.raw && r.raw !== "none")
@@ -305,7 +327,7 @@ function popoverHtml(t, odds) {
     </div>
     <div class="pop-rows">
       ${creatureModDefs(t).map(d => {
-        const unlocked = !d.unlock || state.modUnlocked[d.unlock];
+        const unlocked = modUnlocked(d.unlock);
         return `<div class="rm-row ${unlocked ? "" : "rm-off"}" data-modkey="${d.key}">
           <span class="rm-name">${d.name} <small>${d.range}</small>${unlocked ? "" : ' <small class="rm-lock">locked</small>'}</span>
           ${selectHtml("rule", tr[d.key] || "none", ruleOpts, `${d.name} rule for ${t.name}`, !unlocked)}
@@ -422,17 +444,19 @@ function renderResults(o) {
 
 function renderControls() {
   $("level").value = state.level;
-  document.querySelectorAll("#offers-seg button").forEach(b =>
-    b.classList.toggle("on", Number(b.dataset.offers) === state.offers));
+  $("tasks-done").value = state.tasksDone;
   const v = $("venators");
   v.classList.toggle("on", state.venators);
   v.setAttribute("aria-pressed", String(state.venators));
   v.textContent = state.venators ? "Blood Moon Rises ✓" : "Blood Moon Rises ✗";
-  document.querySelectorAll("#unlock-seg button").forEach(b => {
-    const on = state.modUnlocked[b.dataset.unlock];
-    b.classList.toggle("on", on);
-    b.setAttribute("aria-pressed", String(on));
-  });
+  // read-only progression readout — these unlock automatically
+  const stones = [
+    ...UNLOCKS.map(u => ({ name: u.name, at: u.at, on: state.tasksDone >= u.at })),
+    { name: "3rd choice", at: THIRD_CHOICE_AT, on: state.tasksDone >= THIRD_CHOICE_AT },
+  ];
+  $("milestones").innerHTML = stones.map(s =>
+    `<span class="ms ${s.on ? "on" : ""}" title="${s.on ? "Unlocked" : "Unlocks"} at ${s.at} tasks">
+      ${s.on ? "✓" : "○"} ${s.name}</span>`).join("");
 }
 
 function refresh() {
@@ -778,22 +802,13 @@ $("level").addEventListener("change", e => {
   refresh();
 });
 
-$("offers-seg").addEventListener("click", e => {
-  const b = e.target.closest("button[data-offers]");
-  if (!b) return;
-  state.offers = Number(b.dataset.offers);
+$("tasks-done").addEventListener("change", e => {
+  state.tasksDone = Math.max(0, Math.min(999, Math.round(Number(e.target.value) || 0)));
   refresh();
 });
 
 $("venators").addEventListener("click", () => {
   state.venators = !state.venators;
-  refresh();
-});
-
-$("unlock-seg").addEventListener("click", e => {
-  const b = e.target.closest("button[data-unlock]");
-  if (!b) return;
-  state.modUnlocked[b.dataset.unlock] = !state.modUnlocked[b.dataset.unlock];
   refresh();
 });
 
@@ -803,6 +818,7 @@ $("focus-tier").addEventListener("change", e => {
 });
 
 $("reset").addEventListener("click", () => {
+  state.tasksDone = 100;
   state.blocked = [];
   state.taskRules = {};
   state.placement = {};

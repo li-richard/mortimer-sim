@@ -6,7 +6,7 @@ Source: [Meet Mortimer: Your Newest Slayer Master](https://secure.runescape.com/
 
 ## The app: Mortimer's Ledger
 
-An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). The primary interface is a TierMaker-style **tier board** of purely *ordinal* tiers — the top tier is the best, and rank alone carries meaning (no good/bad labels). Every creature starts in the middle tier. Drag chips between tiers (with a live insertion marker; manual order is preserved), drag a tier's ⠿ grip to reorder tiers, and add/rename/delete tiers freely. Chips show each creature's chance of appearing in an offer; clicking one opens a floating card with its stat ranges, a block toggle (max 2, 120 pts each), and its per-modifier rules (tier changes are drag-only). Set your Slayer level / offer count (2, or 3 after 100 tasks) / Venators quest status / which modifiers you've unlocked (clue at 25 tasks, XP at 50, Superior at 75), and the results card computes, for whichever tier you focus:
+An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). The primary interface is a TierMaker-style **tier board** of purely *ordinal* tiers — the top tier is the best, and rank alone carries meaning (no good/bad labels). Every creature starts in the middle tier. Drag chips between tiers (with a live insertion marker; manual order is preserved), drag a tier's ⠿ grip to reorder tiers, and add/rename/delete tiers freely. Chips show each creature's chance of appearing in an offer; clicking one opens a floating card with its stat ranges, a block toggle (max 2, 120 pts each), and its per-modifier rules (tier changes are drag-only). Set your Slayer level, Venators quest status, and **tasks completed for Mortimer** — progression is automatic, so that one number derives which modifier types are unlocked (clue at 25, XP at 50, Superior at 75) and whether you get a third task choice (100). The results card then computes, for whichever tier you focus:
 
 - P(next offer contains a task landing in the focused tier), and in that tier *or better*
 - The exact distribution of the best tier on offer (one bar segment per tier)
@@ -22,7 +22,8 @@ The math lives in [math.js](math.js) (shared between the browser and node) and e
 - **Offer sets** are drawn by successive weighted draws without replacement — equivalent to "roll from the full pool, reroll duplicates", the natural implementation of the blog's no-duplicates rule. With equal weights this reduces to a uniform random subset.
 - **Each offer roll is independent** (after a skip or a completed task, the next set is a fresh roll), so roll counts are geometric: mean rolls until a desired offer = 1/p, mean skips before it = (1−p)/p.
 - **Patient strategy** (take desired if offered, else neutral, skip only all-bad sets): desired share of completed tasks = p_desired ∕ (p_desired + p_neutral); expected skips per completed task = p_allbad ∕ (1 − p_allbad).
-- Not modeled: modifier types on offers (each unlocked type is equally likely, per the FAQ), the Slayer cape 10% same-task perk, and task storage.
+- **Modifier unlocks are progression, not choices.** The blog says modifiers unlock as you complete assignments, at fixed counts — you cannot decline one. Because each unlocked type is equally likely, unlocking *dilutes* any single type: a given modifier rolls 1-in-2 with two types unlocked and 1-in-5 with five. So a rule keyed to one modifier fires less often later in progression, even though the newly unlocked modifiers carry their own value. That dilution is real; the ability to avoid it is not.
+- Not modeled: the Slayer cape 10% same-task perk, and task storage.
 
 ### Tests
 

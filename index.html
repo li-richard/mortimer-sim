@@ -24,23 +24,16 @@
     <input id="level" type="number" min="1" max="99" step="1" value="99">
   </div>
   <div class="ctl">
-    <label id="offers-label">Tasks offered</label>
-    <div class="seg" role="group" aria-labelledby="offers-label" id="offers-seg">
-      <button data-offers="2">Two</button>
-      <button data-offers="3" class="on">Three <small>(100 tasks)</small></button>
-    </div>
+    <label for="tasks-done">Tasks done for Mortimer</label>
+    <input id="tasks-done" type="number" min="0" max="999" step="1" value="100">
+  </div>
+  <div class="ctl">
+    <label id="progress-label">Unlocked so far</label>
+    <div class="milestones" id="milestones" aria-labelledby="progress-label"></div>
   </div>
   <div class="ctl">
     <label for="venators">Venators</label>
     <button id="venators" class="toggle on" aria-pressed="true">Blood Moon Rises ✓</button>
-  </div>
-  <div class="ctl">
-    <label id="unlocks-label">Modifiers unlocked</label>
-    <div class="seg" role="group" aria-labelledby="unlocks-label" id="unlock-seg">
-      <button data-unlock="clue">Clue <small>(25)</small></button>
-      <button data-unlock="xp">XP <small>(50)</small></button>
-      <button data-unlock="sup">Superior <small>(75)</small></button>
-    </div>
   </div>
   <div class="ctl ctl-end">
     <button id="reset" class="ghost">Reset ledger</button>
