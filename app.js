@@ -33,6 +33,8 @@ const state = {
   tierOrder: {},
   // per-creature modifier rules: name -> { points|qty|clue|xp|sup: "up"|"down"|"to:<tierId>" }
   taskRules: {},
+  // what the hero number measures: "desired" (any ✓ tier) or a tier id
+  focusTier: "desired",
 };
 
 // UI-only state, not persisted
@@ -351,9 +353,26 @@ function renderResults(o) {
   const nNeutral = pool.length - nDesired - nBad;
   const rulesActive = Object.keys(state.taskRules).length > 0;
 
-  $("hero-num").textContent = (nDesired || pD > 0) ? pct(pD) : "—";
-  $("hero-foot").textContent = (nDesired || pD > 0)
-    ? `${nDesired} desired of ${pool.length} in pool · ${k} offered per roll${rulesActive ? " · Mortifier rules applied" : ""}`
+  // hero focus: aggregate desired class, or one specific tier
+  if (state.focusTier !== "desired" && !state.tiers.some(t => t.id === state.focusTier)) {
+    state.focusTier = "desired";
+  }
+  const focusSel = $("focus-tier");
+  focusSel.innerHTML =
+    `<option value="desired">a ✓ desired task</option>` +
+    state.tiers.map(t => `<option value="${t.id}">a “${esc(t.name)}” task</option>`).join("");
+  focusSel.value = state.focusTier;
+  const fIdx = state.tiers.findIndex(t => t.id === state.focusTier);
+  const focusCls = fIdx === -1 ? "desired" : state.tiers[fIdx].cls;
+  focusSel.className = "hero-sel hero-sel-" + focusCls;
+  const pFocus = state.focusTier === "desired" ? pD : (o.tierHit ? o.tierHit[fIdx] : 0);
+
+  const showNum = state.focusTier !== "desired" || nDesired || pD > 0;
+  $("hero-num").textContent = showNum ? pct(pFocus) : "—";
+  $("hero-foot").textContent = showNum
+    ? (state.focusTier === "desired"
+        ? `${nDesired} desired of ${pool.length} in pool · ${k} offered per roll${rulesActive ? " · Mortifier rules applied" : ""}`
+        : `“${state.tiers[fIdx].name}” counts ${focusCls} · after modifiers · ${k} offered per roll`)
     : `drag creatures into a ✓ tier to see your odds · ${pool.length} in pool`;
 
   // stacked outcome bar (2px gaps come from the flex gap)
@@ -372,8 +391,8 @@ function renderResults(o) {
 
   const st = MortimerMath.strategyStats(o, SKIP_COST);
   $("t-allbad").textContent = pB > 0 ? pct(pB) : "0%";
-  $("t-rolls").textContent = pD > 0 ? st.offersPerDesired.toFixed(1) : "—";
-  $("t-skipcost").textContent = pD > 0 ? Math.round(st.skipUntilDesiredCost) + " pts" : "—";
+  $("t-rolls").textContent = pFocus > 0 ? (1 / pFocus).toFixed(1) : "—";
+  $("t-skipcost").textContent = pFocus > 0 ? Math.round(SKIP_COST * (1 - pFocus) / pFocus) + " pts" : "—";
   $("t-patient").textContent = (pD + pN) > 0 ? pct0(st.patientDesiredShare) : "—";
 
   const blockSpend = state.blocked.length * BLOCK_COST;
@@ -638,6 +657,11 @@ $("unlock-seg").addEventListener("click", e => {
   const b = e.target.closest("button[data-unlock]");
   if (!b) return;
   state.modUnlocked[b.dataset.unlock] = !state.modUnlocked[b.dataset.unlock];
+  refresh();
+});
+
+$("focus-tier").addEventListener("change", e => {
+  state.focusTier = e.target.value;
   refresh();
 });
 

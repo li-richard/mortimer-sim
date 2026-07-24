@@ -349,6 +349,22 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
   color: var(--ink-2); margin: 0; font-size: 15px;
 }
 .hero-label em { color: var(--desired-ink); font-style: italic; }
+.hero-sel {
+  appearance: none; -webkit-appearance: none;
+  background: transparent; border: none;
+  border-bottom: 1px dashed var(--hairline);
+  font-family: var(--serif); font-style: italic; font-size: 15px;
+  color: var(--desired-ink);
+  padding: 0 14px 1px 2px; cursor: pointer;
+  background-image: linear-gradient(45deg, transparent 50%, var(--gold-dim) 50%), linear-gradient(135deg, var(--gold-dim) 50%, transparent 50%);
+  background-position: calc(100% - 8px) 55%, calc(100% - 4px) 55%;
+  background-size: 4px 4px, 4px 4px;
+  background-repeat: no-repeat;
+}
+.hero-sel:hover { border-bottom-color: var(--gold-dim); }
+.hero-sel-neutral { color: var(--ink-2); }
+.hero-sel-bad { color: var(--bad-ink); }
+.hero-sel option { background: var(--panel); color: var(--ink); font-style: normal; }
 .hero-num {
   font-family: var(--serif-display);
   font-size: 64px; line-height: 1.05;
