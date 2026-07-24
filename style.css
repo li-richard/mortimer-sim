@@ -72,19 +72,17 @@ a { color: var(--gold); }
 
 /* ————— controls ————— */
 
-/* a strip inside the board panel, under its title */
+/* a toolbar strip inside the board panel, under its title: groups packed
+   left at an even rhythm, separated by hairlines, gear pinned right */
 .controls {
-  display: flex; flex-wrap: wrap; gap: 14px 28px;
-  justify-content: space-between; align-items: flex-end;
+  display: flex; flex-wrap: wrap; row-gap: 12px;
+  align-items: flex-end;
   padding: 11px 16px 12px;
   background: rgba(0, 0, 0, 0.16);
   border-bottom: 1px solid var(--hairline);
 }
-/* once they wrap, spreading leaves odd gaps — pack left, gear stays right */
-@media (max-width: 1100px) {
-  .controls { justify-content: flex-start; }
-  .controls .ctl-end { margin-left: auto; }
-}
+.controls { column-gap: 34px; }
+.controls .ctl-end { margin-left: auto; }
 .ctl label {
   display: block;
   font-family: var(--serif-display);
