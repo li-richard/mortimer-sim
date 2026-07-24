@@ -206,8 +206,15 @@ function chipHtml(t, odds) {
     ${t.name}<small>${t.level}</small><span class="c-off">${off}</span></div>`;
 }
 
-function drawerHtml(t, odds) {
+function popoverHtml(t, odds) {
   const blocked = state.blocked.includes(t.name);
+  const tooHigh = t.level > state.level;
+  const noQuest = t.name === "Venators" && !state.venators;
+  const p = odds.appear[t.name];
+  const off = blocked ? "blocked"
+    : tooHigh ? `needs ${t.level} Slayer`
+    : noQuest ? "needs Blood Moon Rises"
+    : p !== undefined ? pct(p) + " offered" : "";
   const slot = odds.slot[t.name];
   const cls = classOf(t.name);
   let chips = "";
@@ -231,12 +238,12 @@ function drawerHtml(t, odds) {
     `<option value="down" ${cur === "down" ? "selected" : ""}>▼ down one tier</option>`,
     ...state.tiers.map(x => `<option value="to:${x.id}" ${cur === "to:" + x.id ? "selected" : ""}>→ ${esc(x.name)}</option>`),
   ].join("");
-  return `<div class="crea crea-open" data-name="${t.name}">
-    <div class="ce-head" title="Click to collapse">
+  return `<div class="pop-caret"></div>
+    <div class="ce-head">
       <b>${t.name}</b>
       <span class="r-lvl">lvl ${t.level}</span>
       ${t.weight === 8 ? '<span class="r-w8" title="Reduced weighting: 8 instead of 10">w8</span>' : ""}
-      <span class="ce-detail">${detailLine(t)}</span>
+      <span class="pop-off">${off}</span>
       ${chips}
       <button class="blk ${blocked ? "on" : ""}" data-act="block" aria-pressed="${blocked}"
         ${!blocked && state.blocked.length >= MAX_BLOCKS ? "disabled" : ""}
@@ -245,7 +252,8 @@ function drawerHtml(t, odds) {
       </button>
       <button class="ce-close" data-act="close" title="Close">✕</button>
     </div>
-    <div class="ce-grid">
+    <div class="pop-sub">assign ${t.assignMin}–${t.assignMax}${t.extendable ? " · extendable" : ""} · weighting ${t.weight}</div>
+    <div class="pop-rows">
       <div class="rm-row rm-tier">
         <span class="rm-name">Tier</span>
         <select class="rm-sel" data-tiersel aria-label="Tier for ${t.name}">${tierOpts}</select>
@@ -257,8 +265,39 @@ function drawerHtml(t, odds) {
           <select class="rm-sel" data-rulesel aria-label="${d.name} rule for ${t.name}" ${unlocked ? "" : "disabled"}>${ruleOpts(tr[d.key])}</select>
         </div>`;
       }).join("")}
-    </div>
-  </div>`;
+    </div>`;
+}
+
+function positionPopover() {
+  const pop = $("popover");
+  if (pop.hidden || !selectedName) return;
+  const chip = document.querySelector(`.crea[data-name="${CSS.escape(selectedName)}"]`);
+  if (!chip) { pop.hidden = true; return; }
+  const r = chip.getBoundingClientRect();
+  const pw = pop.offsetWidth, ph = pop.offsetHeight;
+  const margin = 9;
+  let left = r.left + window.scrollX;
+  left = Math.min(left, window.scrollX + document.documentElement.clientWidth - pw - 12);
+  left = Math.max(left, window.scrollX + 12);
+  const below = (window.innerHeight - r.bottom > ph + margin + 6) || (r.top < ph + margin + 6);
+  const top = below ? r.bottom + window.scrollY + margin : r.top + window.scrollY - ph - margin;
+  pop.style.left = left + "px";
+  pop.style.top = top + "px";
+  pop.classList.toggle("pop-above", !below);
+  const caret = pop.querySelector(".pop-caret");
+  if (caret) {
+    const cx = r.left + window.scrollX + r.width / 2 - left;
+    caret.style.left = Math.max(16, Math.min(pw - 16, cx)) + "px";
+  }
+}
+
+function renderPopover(odds) {
+  const pop = $("popover");
+  const t = selectedName ? TASKS.find(x => x.name === selectedName) : null;
+  if (!t) { pop.hidden = true; pop.innerHTML = ""; return; }
+  pop.innerHTML = popoverHtml(t, odds);
+  pop.hidden = false;
+  positionPopover();
 }
 
 function renderTiers(odds) {
@@ -280,8 +319,7 @@ function renderTiers(odds) {
           <button data-tact="del" title="Delete tier (its creatures move to the default tier)" ${state.tiers.length <= 1 ? "disabled" : ""}>✕</button>
         </div>
       </div>
-      <div class="tier-drop" data-drop="${tier.id}">${members.map(t =>
-        t.name === selectedName ? drawerHtml(t, odds) : chipHtml(t, odds)).join("")}</div>
+      <div class="tier-drop" data-drop="${tier.id}">${members.map(t => chipHtml(t, odds)).join("")}</div>
     </div>`;
   }).join("");
 }
@@ -346,6 +384,7 @@ function refresh() {
   ensurePlacements();
   const odds = computeOdds();
   renderTiers(odds);
+  renderPopover(odds);
   renderResults(odds);
   renderControls();
   save();
@@ -393,22 +432,8 @@ tiersEl.addEventListener("drop", e => {
   refresh();
 });
 
-// chip selection + inline card controls
+// chip selection
 tiersEl.addEventListener("click", e => {
-  const open = e.target.closest(".crea-open");
-  if (open) {
-    const btn = e.target.closest("button");
-    const name = open.dataset.name;
-    if (btn && btn.dataset.act === "block") {
-      if (state.blocked.includes(name)) state.blocked = state.blocked.filter(n => n !== name);
-      else if (state.blocked.length < MAX_BLOCKS) state.blocked.push(name);
-      refresh();
-    } else if ((btn && btn.dataset.act === "close") || (!btn && e.target.closest(".ce-head"))) {
-      selectedName = null;
-      refresh();
-    }
-    return;
-  }
   const chip = e.target.closest(".crea");
   if (chip) {
     selectedName = selectedName === chip.dataset.name ? null : chip.dataset.name;
@@ -443,24 +468,6 @@ tiersEl.addEventListener("click", e => {
 });
 
 tiersEl.addEventListener("change", e => {
-  const editor = e.target.closest(".crea-open");
-  if (editor) {
-    const name = editor.dataset.name;
-    if (e.target.hasAttribute("data-tiersel")) {
-      state.placement[name] = e.target.value;
-      refresh();
-      return;
-    }
-    if (e.target.hasAttribute("data-rulesel")) {
-      const key = e.target.closest(".rm-row").dataset.modkey;
-      const tr = state.taskRules[name] || (state.taskRules[name] = {});
-      if (e.target.value === "none") delete tr[key];
-      else tr[key] = e.target.value;
-      if (!Object.keys(tr).length) delete state.taskRules[name];
-      refresh();
-    }
-    return;
-  }
   const inp = e.target.closest(".tier-name");
   if (!inp || inp.tagName !== "INPUT") return;
   const t = state.tiers.find(x => x.id === e.target.closest(".tier")?.dataset.tier);
@@ -468,6 +475,59 @@ tiersEl.addEventListener("change", e => {
   t.name = inp.value.trim() || t.name;
   refresh();
 });
+
+// ————— floating creature card —————
+
+const popEl = $("popover");
+
+popEl.addEventListener("click", e => {
+  const btn = e.target.closest("button");
+  if (!btn || !selectedName) return;
+  const name = selectedName;
+  if (btn.dataset.act === "block") {
+    if (state.blocked.includes(name)) state.blocked = state.blocked.filter(n => n !== name);
+    else if (state.blocked.length < MAX_BLOCKS) state.blocked.push(name);
+    refresh();
+  } else if (btn.dataset.act === "close") {
+    selectedName = null;
+    refresh();
+  }
+});
+
+popEl.addEventListener("change", e => {
+  if (!selectedName) return;
+  const name = selectedName;
+  if (e.target.hasAttribute("data-tiersel")) {
+    state.placement[name] = e.target.value;
+    refresh();
+    return;
+  }
+  if (e.target.hasAttribute("data-rulesel")) {
+    const key = e.target.closest(".rm-row").dataset.modkey;
+    const tr = state.taskRules[name] || (state.taskRules[name] = {});
+    if (e.target.value === "none") delete tr[key];
+    else tr[key] = e.target.value;
+    if (!Object.keys(tr).length) delete state.taskRules[name];
+    refresh();
+  }
+});
+
+// click-away, Escape, and reposition on resize
+document.addEventListener("click", e => {
+  if (popEl.hidden) return;
+  if (e.target.closest("#popover") || e.target.closest(".crea") || e.target.closest(".tier-side")) return;
+  selectedName = null;
+  refresh();
+});
+
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && selectedName) {
+    selectedName = null;
+    refresh();
+  }
+});
+
+window.addEventListener("resize", positionPopover);
 
 $("add-tier").addEventListener("click", () => {
   state.tierSeq = Math.max(state.tierSeq || 0, state.tiers.length) + 1;
