@@ -80,19 +80,30 @@
     const d = pool.map(t => t.dProb);
     const b = pool.map(t => t.bProb);
     const tp = m ? pool.map(t => t.tierProbs) : null;
+    // cum[i][j] = P(slot i lands in tier j or worse); cum[i][m] = 0
+    const cum = m ? pool.map(t => {
+      const c = new Array(m + 1).fill(0);
+      for (let j = m - 1; j >= 0; j--) c[j] = c[j + 1] + t.tierProbs[j];
+      return c;
+    }) : null;
     const totalW = w.reduce((a, x) => a + x, 0);
     const appearArr = new Array(n).fill(0);
     const tierHit = m ? new Array(m).fill(0) : null;
+    // tierGE[j] = P(every offered task lands in tier j or worse)
+    const tierGE = m ? new Array(m + 1).fill(0) : null;
     const used = new Array(n).fill(false);
     const chosen = [];
     let pDesired = 0, pAllBad = 0;
 
-    (function rec(prob, remW, noDesired, allBad, noTier) {
+    (function rec(prob, remW, noDesired, allBad, noTier, allGE) {
       if (chosen.length === k) {
         pDesired += prob * (1 - noDesired);
         pAllBad += prob * allBad;
         for (const i of chosen) appearArr[i] += prob;
-        if (m) for (let j = 0; j < m; j++) tierHit[j] += prob * (1 - noTier[j]);
+        if (m) {
+          for (let j = 0; j < m; j++) tierHit[j] += prob * (1 - noTier[j]);
+          for (let j = 0; j <= m; j++) tierGE[j] += prob * allGE[j];
+        }
         return;
       }
       for (let i = 0; i < n; i++) {
@@ -100,14 +111,19 @@
         used[i] = true; chosen.push(i);
         rec(prob * w[i] / remW, remW - w[i],
             noDesired * (1 - d[i]), allBad * b[i],
-            m ? noTier.map((x, j) => x * (1 - tp[i][j])) : null);
+            m ? noTier.map((x, j) => x * (1 - tp[i][j])) : null,
+            m ? allGE.map((x, j) => x * cum[i][j]) : null);
         chosen.pop(); used[i] = false;
       }
-    })(1, totalW, 1, 1, m ? new Array(m).fill(1) : null);
+    })(1, totalW, 1, 1,
+       m ? new Array(m).fill(1) : null,
+       m ? new Array(m + 1).fill(1) : null);
 
     pool.forEach((t, i) => { appear[t.name] = appearArr[i]; });
     const pNeutral = Math.max(0, 1 - pDesired - pAllBad);
-    return { k, n, pDesired, pAllBad, pNeutral, appear, tierHit };
+    // bestTier[j] = P(the best task on offer lands exactly in tier j)
+    const bestTier = m ? tierGE.slice(0, m).map((s, j) => Math.max(0, s - tierGE[j + 1])) : null;
+    return { k, n, pDesired, pAllBad, pNeutral, appear, tierHit, tierGE, bestTier };
   }
 
   /**

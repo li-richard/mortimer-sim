@@ -375,14 +375,18 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 .hero-foot { margin: 2px 0 0; font-size: 12.5px; color: var(--ink-3); }
 
 .bar-wrap { margin: 14px 0 4px; }
+.bar-cap {
+  margin: 0 0 6px; font-family: var(--serif); font-style: italic;
+  font-size: 13px; color: var(--ink-3);
+}
 .bar {
   display: flex; gap: 2px; height: 18px;
   border-radius: 3px; overflow: hidden;
   background: var(--panel-2);
 }
-.bar .seg-d { background: var(--desired); }
-.bar .seg-n { background: var(--neutral); }
-.bar .seg-b { background: var(--bad); }
+.seg-desired { background: var(--desired); }
+.seg-neutral { background: var(--neutral); }
+.seg-bad { background: var(--bad); }
 .bar > div { border-radius: 2px; min-width: 0; transition: flex-grow 0.25s ease; }
 
 .legend { list-style: none; margin: 8px 0 0; padding: 0; font-size: 13px; }

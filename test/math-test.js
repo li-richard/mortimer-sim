@@ -273,6 +273,24 @@ console.log("— tierHit —");
   check("fractional tierHit[0] hand-computed", o2.tierHit[0], hit0, 1e-12);
   check("fractional tierHit[0] = pDesired (t0 is the desired tier)", o2.tierHit[0], o2.pDesired, 1e-12);
   check("tierHit[1] hand-computed (only XZ can miss it)", o2.tierHit[1], 1 - pXZ * 0.5 * 0.25, 1e-12);
+
+  // best-tier distribution
+  check("bestTier[0] = tierHit[0] (nothing beats the top tier)", o2.bestTier[0], o2.tierHit[0], 1e-12);
+  check("Σ bestTier = 1 (fully placed pool)", o2.bestTier.reduce((a, b) => a + b, 0), 1, 1e-12);
+  // best = tier1 means every slot rolled tier1: XY (.5·1), XZ (.5·.75), YZ (1·.75)
+  check("bestTier[1] hand-computed", o2.bestTier[1], pXY * 0.5 + pXZ * 0.375 + pYZ * 0.75, 1e-12);
+
+  // deterministic 4-tier case: S_j hypergeometric, best = S_j − S_{j+1}
+  const pool3 = Array.from({ length: 10 }, (_, i) => {
+    const tierProbs = [0, 0, 0, 0];
+    tierProbs[i % 4] = 1;
+    return { name: "c" + i, weight: 5, dProb: i % 4 === 0 ? 1 : 0, bProb: 0, tierProbs };
+  });
+  const o3 = computeOdds(pool3, 3);
+  // counts per tier: [3,3,2,2]; S_j = C(remaining_at_or_worse, 3)/C(10,3)
+  const S = j => binom([10, 7, 4, 2, 0][j], 3) / binom(10, 3);
+  for (let j = 0; j < 4; j++)
+    check(`deterministic bestTier[${j}] = S_${j} − S_${j + 1}`, o3.bestTier[j], S(j) - S(j + 1), 1e-9);
 }
 
 // ————— edge cases —————

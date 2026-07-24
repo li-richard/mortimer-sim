@@ -353,40 +353,41 @@ function renderResults(o) {
   const nNeutral = pool.length - nDesired - nBad;
   const rulesActive = Object.keys(state.taskRules).length > 0;
 
-  // hero focus: aggregate desired class, or one specific tier
-  if (state.focusTier !== "desired" && !state.tiers.some(t => t.id === state.focusTier)) {
-    state.focusTier = "desired";
+  // hero focus: one of the actual tiers
+  if (!state.tiers.some(t => t.id === state.focusTier)) {
+    state.focusTier = (state.tiers.find(t => t.cls === "desired") || state.tiers[0]).id;
   }
   const focusSel = $("focus-tier");
   focusSel.innerHTML =
-    `<option value="desired">a ✓ desired task</option>` +
     state.tiers.map(t => `<option value="${t.id}">a “${esc(t.name)}” task</option>`).join("");
   focusSel.value = state.focusTier;
   const fIdx = state.tiers.findIndex(t => t.id === state.focusTier);
-  const focusCls = fIdx === -1 ? "desired" : state.tiers[fIdx].cls;
+  const focusCls = state.tiers[fIdx].cls;
   focusSel.className = "hero-sel hero-sel-" + focusCls;
-  const pFocus = state.focusTier === "desired" ? pD : (o.tierHit ? o.tierHit[fIdx] : 0);
+  const pFocus = o.tierHit ? o.tierHit[fIdx] : 0;
+  const pOrBetter = o.tierGE ? 1 - o.tierGE[fIdx + 1] : 0;
 
-  const showNum = state.focusTier !== "desired" || nDesired || pD > 0;
-  $("hero-num").textContent = showNum ? pct(pFocus) : "—";
-  $("hero-foot").textContent = showNum
-    ? (state.focusTier === "desired"
-        ? `${nDesired} desired of ${pool.length} in pool · ${k} offered per roll${rulesActive ? " · Mortifier rules applied" : ""}`
-        : `“${state.tiers[fIdx].name}” counts ${focusCls} · after modifiers · ${k} offered per roll`)
-    : `drag creatures into a ✓ tier to see your odds · ${pool.length} in pool`;
+  $("hero-num").textContent = pool.length ? pct(pFocus) : "—";
+  $("hero-foot").textContent = pool.length
+    ? `counts ${CLS_ICON[focusCls]} ${focusCls} · this tier or better: ${pct(pOrBetter)} · ${k} offered per roll${rulesActive ? " · rules applied" : ""}`
+    : `no creatures in the pool`;
 
-  // stacked outcome bar (2px gaps come from the flex gap)
-  const segs = [
-    { cls: "seg-d", p: pD, name: "Has a desired task", col: "var(--desired)" },
-    { cls: "seg-n", p: pN, name: "Neutral at best", col: "var(--neutral)" },
-    { cls: "seg-b", p: pB, name: "All offers bad", col: "var(--bad)" },
-  ];
+  // stacked bar: distribution of the best tier on offer (2px gaps from flex gap)
+  const dupCount = {};
+  const segs = state.tiers.map((t, j) => {
+    const dup = (dupCount[t.cls] = (dupCount[t.cls] || 0) + 1) - 1;
+    return {
+      name: t.name, cls: t.cls,
+      p: o.bestTier ? o.bestTier[j] : 0,
+      filter: dup ? `filter:brightness(${Math.max(0.55, 1 - 0.16 * dup)});` : "",
+    };
+  });
   $("bar").innerHTML = segs
     .filter(s => s.p > 0.0005)
-    .map(s => `<div class="${s.cls}" style="flex-grow:${(s.p * 1000).toFixed(0)}" title="${s.name}: ${pct(s.p)}"></div>`)
+    .map(s => `<div class="seg-${s.cls}" style="flex-grow:${(s.p * 1000).toFixed(0)};${s.filter}" title="Best task on offer is “${esc(s.name)}”: ${pct(s.p)}"></div>`)
     .join("");
   $("legend").innerHTML = segs
-    .map(s => `<li><span class="swatch" style="background:${s.col}"></span>${s.name}<span class="val">${pct(s.p)}</span></li>`)
+    .map(s => `<li><span class="swatch seg-${s.cls}" style="${s.filter}"></span>${esc(s.name)}<span class="val">${pct(s.p)}</span></li>`)
     .join("");
 
   const st = MortimerMath.strategyStats(o, SKIP_COST);
