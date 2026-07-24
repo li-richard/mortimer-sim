@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mortimer’s Ledger — OSRS Slayer Task Odds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="rule-top"></div>
+  <h1>Mortimer’s Ledger</h1>
+  <p class="sub">Offer odds for Gielinor’s newest Slayer Master · Wyrmscraig, 29 July</p>
+  <div class="rule-bottom"><span class="rule-gem">◆</span></div>
+</header>
+
+<section class="controls" aria-label="Settings">
+  <div class="ctl">
+    <label for="level">Slayer level</label>
+    <input id="level" type="number" min="1" max="99" step="1" value="99">
+  </div>
+  <div class="ctl">
+    <label id="offers-label">Tasks offered</label>
+    <div class="seg" role="group" aria-labelledby="offers-label" id="offers-seg">
+      <button data-offers="2">Two</button>
+      <button data-offers="3" class="on">Three <small>(100 tasks)</small></button>
+    </div>
+  </div>
+  <div class="ctl">
+    <label for="venators">Venators</label>
+    <button id="venators" class="toggle on" aria-pressed="true">Blood Moon Rises ✓</button>
+  </div>
+  <div class="ctl ctl-end">
+    <button id="reset" class="ghost">Clear labels</button>
+  </div>
+</section>
+
+<main class="layout">
+  <section class="ledger" aria-label="Task pool">
+    <div class="ledger-head">
+      <span class="lh-creature">Creature</span>
+      <span class="lh-offered" title="Chance this creature appears among the tasks offered">Offered</span>
+      <span class="lh-verdict">Your verdict</span>
+    </div>
+    <div id="rows"></div>
+  </section>
+
+  <aside class="results" aria-label="Odds">
+    <div class="hero">
+      <p class="hero-label">Next offer contains a <em>desired</em> task</p>
+      <p class="hero-num" id="hero-num">—</p>
+      <p class="hero-foot" id="hero-foot"></p>
+    </div>
+
+    <div class="bar-wrap">
+      <div class="bar" id="bar" role="img" aria-label="Outcome distribution of one offer"></div>
+      <ul class="legend" id="legend"></ul>
+    </div>
+
+    <div class="tiles">
+      <div class="tile"><p class="t-num" id="t-allbad">—</p><p class="t-label">offer is all bad<br>(skip · store · suffer)</p></div>
+      <div class="tile"><p class="t-num" id="t-rolls">—</p><p class="t-label">offers per<br>desired task</p></div>
+      <div class="tile"><p class="t-num" id="t-skipcost">—</p><p class="t-label">avg points to skip<br>until desired</p></div>
+      <div class="tile"><p class="t-num" id="t-patient">—</p><p class="t-label">tasks desired if you<br>skip only all-bad offers</p></div>
+    </div>
+
+    <div class="fine" id="fine"></div>
+  </aside>
+</main>
+
+<footer class="colophon">
+  Weighted draws without replacement, enumerated exactly — no simulation error.
+  Skips cost 100 pts · blocks 120 pts each (max 2) · Turael cannot reset Mortimer.
+  Data: <a href="https://secure.runescape.com/m=news/meet-mortimer-your-newest-slayer-master?oldschool=1">official blog, 24 Jul 2026</a>.
+</footer>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

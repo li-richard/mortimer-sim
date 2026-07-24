@@ -4,6 +4,25 @@ Simulating outcomes for **Mortimer**, the new Old School RuneScape Slayer Master
 
 Source: [Meet Mortimer: Your Newest Slayer Master](https://secure.runescape.com/m=news/meet-mortimer-your-newest-slayer-master?oldschool=1) (news post, 24 July 2026).
 
+## The app: Mortimer's Ledger
+
+An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). Label each creature **✓ Desired**, **· Neutral**, or **✗ Bad**, block up to 2 (120 pts each), set your Slayer level / offer count (2, or 3 after 100 tasks) / Venators quest status, and it computes:
+
+- P(next offer contains a desired task), P(neutral at best), P(all offers bad)
+- Expected offers per desired task and average skip cost (100 pts/skip) to reach one
+- Share of completed tasks that are desired under a patient strategy (skip only all-bad offers), and its point cost per task
+- Per-creature chance of appearing in an offer
+
+The math enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. Labels persist in `localStorage`.
+
+Serve it from the repo root (any static server):
+
+```bash
+python3 -m http.server 8742 --directory /Users/richard/dev/mortimer-sim
+```
+
+`data.js` is generated from `data/mortimer_tasks.csv` — regenerate rather than editing by hand if the data changes.
+
 ## Goal
 
 Model Mortimer's assignment system (task offers, weightings, guaranteed modifiers) to answer questions like:
