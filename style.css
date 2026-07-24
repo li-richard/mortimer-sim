@@ -179,8 +179,16 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 .tier-drop {
   flex: 1; display: flex; flex-wrap: wrap; align-content: flex-start;
   gap: 5px; padding: 7px 10px; min-height: 38px;
+  position: relative;
 }
-.tier-drop.drag-over { background: rgba(211,167,85,0.06); outline: 1px dashed var(--gold-dim); outline-offset: -3px; }
+.tier-drop.drag-over { background: rgba(211,167,85,0.04); }
+
+#drop-marker {
+  position: absolute; width: 2px;
+  background: var(--gold); border-radius: 1px;
+  box-shadow: 0 0 7px rgba(211,167,85,0.8);
+  pointer-events: none;
+}
 
 .crea {
   background: var(--panel-2);

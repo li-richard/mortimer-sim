@@ -425,8 +425,44 @@ tiersEl.addEventListener("dragstart", e => {
 
 tiersEl.addEventListener("dragend", () => {
   dragName = null;
+  hideDropMarker();
   document.querySelectorAll(".drag-over, .dragging").forEach(x => x.classList.remove("drag-over", "dragging"));
 });
+
+/* The insertion-boundary marker shown while dragging. */
+function dropMarker() {
+  let m = document.getElementById("drop-marker");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "drop-marker";
+  }
+  return m;
+}
+
+function showDropMarker(zone, x, y, excludeName) {
+  const m = dropMarker();
+  const idx = insertionIndex(zone, x, y, excludeName);
+  const chips = [...zone.querySelectorAll(".crea")].filter(c => c.dataset.name !== excludeName);
+  const zr = zone.getBoundingClientRect();
+  let left, top, height;
+  if (!chips.length) {
+    left = 6; top = 7; height = 26;
+  } else if (idx < chips.length) {
+    const r = chips[idx].getBoundingClientRect();
+    left = r.left - zr.left - 4; top = r.top - zr.top; height = r.height;
+  } else {
+    const r = chips[chips.length - 1].getBoundingClientRect();
+    left = r.right - zr.left + 2; top = r.top - zr.top; height = r.height;
+  }
+  m.style.left = left + "px";
+  m.style.top = top + "px";
+  m.style.height = height + "px";
+  if (m.parentElement !== zone) zone.appendChild(m);
+}
+
+function hideDropMarker() {
+  document.getElementById("drop-marker")?.remove();
+}
 
 tiersEl.addEventListener("dragover", e => {
   const zone = e.target.closest(".tier-drop");
@@ -434,11 +470,15 @@ tiersEl.addEventListener("dragover", e => {
   e.preventDefault();
   e.dataTransfer.dropEffect = "move";
   zone.classList.add("drag-over");
+  showDropMarker(zone, e.clientX, e.clientY, dragName);
 });
 
 tiersEl.addEventListener("dragleave", e => {
   const zone = e.target.closest(".tier-drop");
-  if (zone && !zone.contains(e.relatedTarget)) zone.classList.remove("drag-over");
+  if (zone && !zone.contains(e.relatedTarget)) {
+    zone.classList.remove("drag-over");
+    if (document.getElementById("drop-marker")?.parentElement === zone) hideDropMarker();
+  }
 });
 
 /* Insertion position for a drop at (x, y) among the zone's chips,
@@ -457,6 +497,7 @@ tiersEl.addEventListener("drop", e => {
   const zone = e.target.closest(".tier-drop");
   if (!zone) return;
   e.preventDefault();
+  hideDropMarker();
   const name = dragName || e.dataTransfer.getData("text/plain");
   dragName = null;
   if (!name || !zone.dataset.drop) return;
