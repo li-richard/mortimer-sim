@@ -1,19 +1,19 @@
 /* Mortimer's Ledger — UI layer. All probability math lives in math.js
- * (exact enumeration, no simulation) and is covered by test/math-test.js. */
+ * (exact enumeration, no simulation) and is covered by test/math-test.js.
+ *
+ * Tiers are purely ordinal: index 0 is the best tier, and every number
+ * in the results card is relative to the tier you focus. */
 
 const LS_KEY = "mortimer-ledger-v1";
 const SKIP_COST = 100;
 const BLOCK_COST = 120;
 const MAX_BLOCKS = 2;
 
-const CLS_ORDER = ["desired", "neutral", "bad"];
-const CLS_ICON = { desired: "✓", neutral: "·", bad: "✗" };
-
 function defaultTiers() {
   return [
-    { id: "t1", name: "Desired", cls: "desired" },
-    { id: "t2", name: "Neutral", cls: "neutral" },
-    { id: "t3", name: "Bad", cls: "bad" },
+    { id: "t1", name: "Desired" },
+    { id: "t2", name: "Neutral" },
+    { id: "t3", name: "Bad" },
   ];
 }
 
@@ -27,19 +27,20 @@ const state = {
   // ordered tier list, index 0 = best
   tiers: defaultTiers(),
   tierSeq: 3,
-  // creature name -> tier id; every creature is always placed (default: neutral)
+  // creature name -> tier id; every creature is always placed (default: middle tier)
   placement: {},
   // tier id -> ordered creature names (manual ordering within a tier)
   tierOrder: {},
   // per-creature modifier rules: name -> { points|qty|clue|xp|sup: "up"|"down"|"to:<tierId>" }
   taskRules: {},
-  // what the hero number measures: "desired" (any ✓ tier) or a tier id
-  focusTier: "desired",
+  // the tier the hero number measures
+  focusTier: "t1",
 };
 
 // UI-only state, not persisted
 let selectedName = null;
 let dragName = null;
+let dragTier = null;
 
 // ————— persistence + migration —————
 
@@ -54,22 +55,22 @@ function load() {
     delete s.modRules;
     Object.assign(state, s);
     if (!Array.isArray(state.tiers) || !state.tiers.length) state.tiers = defaultTiers();
+    // classes on tiers are gone — order alone carries meaning now
+    state.tiers = state.tiers.map(t => ({ id: t.id, name: t.name }));
     if (!state.placement || typeof state.placement !== "object") state.placement = {};
     if (!state.taskRules || typeof state.taskRules !== "object") state.taskRules = {};
     if (labels && typeof labels === "object") {
       for (const [name, lab] of Object.entries(labels)) {
-        const tier = state.tiers.find(t => t.cls === lab);
-        if (tier) state.placement[name] = tier.id;
+        if (lab === "desired") state.placement[name] = state.tiers[0].id;
+        else if (lab === "bad") state.placement[name] = state.tiers[state.tiers.length - 1].id;
       }
     }
     // migrate the pre-tier rule vocabulary to tier operations
     for (const [name, rules] of Object.entries(state.taskRules)) {
       for (const [k, v] of Object.entries(rules)) {
         if (v === "tier") rules[k] = "up";
-        else if (v === "neutral" || v === "desired") {
-          const tier = state.tiers.find(t => t.cls === v);
-          rules[k] = tier ? "to:" + tier.id : "none";
-        }
+        else if (v === "neutral") rules[k] = "to:" + defaultTierId();
+        else if (v === "desired") rules[k] = "to:" + state.tiers[0].id;
         if (rules[k] === "none") delete rules[k];
       }
       if (!Object.keys(rules).length) delete state.taskRules[name];
@@ -78,12 +79,9 @@ function load() {
   ensurePlacements();
 }
 
-/* Every creature always sits in a tier; the default home is the first
- * neutral-class tier (or the middle tier if none is neutral). */
+/* Every creature always sits in a tier; the default home is the middle one. */
 function defaultTierId() {
-  const t = state.tiers.find(x => x.cls === "neutral") ||
-    state.tiers[Math.floor((state.tiers.length - 1) / 2)];
-  return t.id;
+  return state.tiers[Math.floor((state.tiers.length - 1) / 2)].id;
 }
 
 function ensurePlacements() {
@@ -125,13 +123,18 @@ function tierIndexOf(name) {
   return i === -1 ? null : i;
 }
 
-function classOf(name) {
-  const i = tierIndexOf(name);
-  return i === null ? "neutral" : state.tiers[i].cls;
+/* Rank color: green (best) through stone to red (worst). */
+function tierColor(i, n) {
+  const stops = [[12, 163, 12], [139, 128, 113], [208, 59, 59]];
+  if (n <= 1) return `rgb(${stops[0].join(",")})`;
+  const t = i / (n - 1);
+  const [a, b, u] = t < 0.5 ? [stops[0], stops[1], t * 2] : [stops[1], stops[2], (t - 0.5) * 2];
+  const mix = a.map((x, j) => Math.round(x + (b[j] - x) * u));
+  return `rgb(${mix.join(",")})`;
 }
 
 /* The modifier types that can land on this creature, with its own
- * rolled ranges (for the drawer UI). */
+ * rolled ranges (for the popover UI). */
 function creatureModDefs(t) {
   const defs = [
     { key: "points", name: "Slayer points", range: `+${t.pts[0]}–${t.pts[1]} pts` },
@@ -166,10 +169,6 @@ function slotTierIdxs(t) {
     .map(d => MortimerMath.resolveTier(baseIdx, normRule(r[d.key]), state.tiers.length));
 }
 
-function slotClasses(t) {
-  return slotTierIdxs(t).map(idx => idx === null ? "neutral" : state.tiers[idx].cls);
-}
-
 function computeOdds() {
   const pool = TASKS.filter(inPool);
   const m = state.tiers.length;
@@ -177,10 +176,7 @@ function computeOdds() {
     const idxs = slotTierIdxs(t);
     const tierProbs = new Array(m).fill(0);
     for (const i of idxs) if (i !== null) tierProbs[i] += 1 / idxs.length;
-    return {
-      name: t.name, weight: t.weight, tierProbs,
-      ...MortimerMath.slotProbs(idxs.map(i => i === null ? "neutral" : state.tiers[i].cls)),
-    };
+    return { name: t.name, weight: t.weight, tierProbs };
   });
   const odds = MortimerMath.computeOdds(entries, state.offers);
   return { ...odds, pool, slot: Object.fromEntries(entries.map(e => [e.name, e])) };
@@ -189,27 +185,12 @@ function computeOdds() {
 // ————— formatting —————
 
 const pct = x => (x * 100).toFixed(1) + "%";
-const pct0 = x => (x * 100).toFixed(0) + "%";
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // ————— rendering —————
 
 const $ = id => document.getElementById(id);
-
-function detailLine(t) {
-  const qty = t.qty[0] < 0
-    ? `qty ${t.qty[0]} to ${t.qty[1]}`
-    : `qty +${t.qty[0]}–${t.qty[1]}`;
-  const bits = [
-    `assign ${t.assignMin}–${t.assignMax}${t.extendable ? " ext" : ""}`,
-    qty,
-    `pts +${t.pts[0]}–${t.pts[1]}`,
-    `xp +${t.xp[0]}–${t.xp[1]}%`,
-    `sup +${t.sup[0]}–${t.sup[1]}%`,
-  ];
-  if (t.clue) bits.push(`clue +${t.clue[0]}–${t.clue[1]}%`);
-  return bits.join('<span class="sep">·</span>');
-}
+const TASK_BY_NAME = Object.fromEntries(TASKS.map(t => [t.name, t]));
 
 function chipHtml(t, odds) {
   const blocked = state.blocked.includes(t.name);
@@ -237,19 +218,15 @@ function popoverHtml(t, odds) {
     : tooHigh ? `needs ${t.level} Slayer`
     : noQuest ? "needs Blood Moon Rises"
     : p !== undefined ? pct(p) + " offered" : "";
-  const slot = odds.slot[t.name];
-  const cls = classOf(t.name);
-  let chips = "";
-  if (slot) {
-    const baseD = cls === "desired" ? 1 : 0;
-    const baseB = cls === "bad" ? 1 : 0;
-    const parts = [];
-    if (slot.dProb !== baseD)
-      parts.push(`<span class="chip chip-d" title="Chance it counts desired once its modifier rolls">✓${Math.round(slot.dProb * 100)}%</span>`);
-    if (slot.bProb !== baseB)
-      parts.push(`<span class="chip chip-b" title="Chance it counts bad once its modifier rolls">✗${Math.round(slot.bProb * 100)}%</span>`);
-    chips = parts.join("");
-  }
+  // chance its rolled modifier moves it to a better / worse tier
+  const baseIdx = tierIndexOf(t.name);
+  const idxs = slotTierIdxs(t);
+  const up = idxs.filter(i => i !== null && i < baseIdx).length / idxs.length;
+  const down = idxs.filter(i => i !== null && i > baseIdx).length / idxs.length;
+  const chips = [
+    up > 0 ? `<span class="chip chip-d" title="Chance its modifier lands it in a better tier">▲${Math.round(up * 100)}%</span>` : "",
+    down > 0 ? `<span class="chip chip-b" title="Chance its modifier lands it in a worse tier">▼${Math.round(down * 100)}%</span>` : "",
+  ].join("");
   const tr = state.taskRules[t.name] || {};
   const curTier = state.placement[t.name];
   const tierOpts = state.tiers.map(x =>
@@ -315,30 +292,29 @@ function positionPopover() {
 
 function renderPopover(odds) {
   const pop = $("popover");
-  const t = selectedName ? TASKS.find(x => x.name === selectedName) : null;
+  const t = selectedName ? TASK_BY_NAME[selectedName] : null;
   if (!t) { pop.hidden = true; pop.innerHTML = ""; return; }
   pop.innerHTML = popoverHtml(t, odds);
   pop.hidden = false;
   positionPopover();
 }
 
-const TASK_BY_NAME = Object.fromEntries(TASKS.map(t => [t.name, t]));
-
 function renderTiers(odds) {
+  const n = state.tiers.length;
   $("tiers").innerHTML = state.tiers.map((tier, i) => {
-    const members = (state.tierOrder[tier.id] || []).map(n => TASK_BY_NAME[n]).filter(Boolean);
+    const members = (state.tierOrder[tier.id] || []).map(x => TASK_BY_NAME[x]).filter(Boolean);
     return `
-    <div class="tier cls-${tier.cls}" data-tier="${tier.id}">
-      <div class="tier-side">
-        <button class="tier-cls" data-tact="cls" title="Counts as ${tier.cls} in the odds — click to cycle">${CLS_ICON[tier.cls]}</button>
+    <div class="tier" data-tier="${tier.id}">
+      <div class="tier-side" style="box-shadow: inset 3px 0 0 ${tierColor(i, n)}">
+        <span class="tier-grip" draggable="true" title="Drag to reorder this tier">⠿</span>
         <div class="tier-side-main">
           <input class="tier-name" value="${esc(tier.name)}" aria-label="Tier name" maxlength="24">
           <span class="tier-odds" title="Chance the next offer contains at least one task that ends up in this tier (after modifiers)">${odds.tierHit ? pct(odds.tierHit[i]) : "—"} of offers</span>
         </div>
         <div class="tier-tools">
           <button data-tact="up" title="Move tier up" ${i === 0 ? "disabled" : ""}>↑</button>
-          <button data-tact="down" title="Move tier down" ${i === state.tiers.length - 1 ? "disabled" : ""}>↓</button>
-          <button data-tact="del" title="Delete tier (its creatures move to the default tier)" ${state.tiers.length <= 1 ? "disabled" : ""}>✕</button>
+          <button data-tact="down" title="Move tier down" ${i === n - 1 ? "disabled" : ""}>↓</button>
+          <button data-tact="del" title="Delete tier (its creatures move to the middle tier)" ${n <= 1 ? "disabled" : ""}>✕</button>
         </div>
       </div>
       <div class="tier-drop" data-drop="${tier.id}">${members.map(t => chipHtml(t, odds)).join("")}</div>
@@ -347,61 +323,53 @@ function renderTiers(odds) {
 }
 
 function renderResults(o) {
-  const { pDesired: pD, pAllBad: pB, pNeutral: pN, pool, k } = o;
-  const nDesired = pool.filter(t => classOf(t.name) === "desired").length;
-  const nBad = pool.filter(t => classOf(t.name) === "bad").length;
-  const nNeutral = pool.length - nDesired - nBad;
+  const { pool, k } = o;
+  const m = state.tiers.length;
   const rulesActive = Object.keys(state.taskRules).length > 0;
 
   // hero focus: one of the actual tiers
-  if (!state.tiers.some(t => t.id === state.focusTier)) {
-    state.focusTier = (state.tiers.find(t => t.cls === "desired") || state.tiers[0]).id;
-  }
+  if (!state.tiers.some(t => t.id === state.focusTier)) state.focusTier = state.tiers[0].id;
   const focusSel = $("focus-tier");
   focusSel.innerHTML =
     state.tiers.map(t => `<option value="${t.id}">a “${esc(t.name)}” task</option>`).join("");
   focusSel.value = state.focusTier;
   const fIdx = state.tiers.findIndex(t => t.id === state.focusTier);
-  const focusCls = state.tiers[fIdx].cls;
-  focusSel.className = "hero-sel hero-sel-" + focusCls;
+  focusSel.style.color = tierColor(fIdx, m);
   const pFocus = o.tierHit ? o.tierHit[fIdx] : 0;
   const pOrBetter = o.tierGE ? 1 - o.tierGE[fIdx + 1] : 0;
+  const pNothing = o.tierGE ? o.tierGE[fIdx + 1] : 0;
 
   $("hero-num").textContent = pool.length ? pct(pFocus) : "—";
   $("hero-foot").textContent = pool.length
-    ? `counts ${CLS_ICON[focusCls]} ${focusCls} · this tier or better: ${pct(pOrBetter)} · ${k} offered per roll${rulesActive ? " · rules applied" : ""}`
-    : `no creatures in the pool`;
+    ? `this tier or better: ${pct(pOrBetter)} · ${k} offered per roll${rulesActive ? " · rules applied" : ""}`
+    : "no creatures in the pool";
 
   // stacked bar: distribution of the best tier on offer (2px gaps from flex gap)
-  const dupCount = {};
-  const segs = state.tiers.map((t, j) => {
-    const dup = (dupCount[t.cls] = (dupCount[t.cls] || 0) + 1) - 1;
-    return {
-      name: t.name, cls: t.cls,
-      p: o.bestTier ? o.bestTier[j] : 0,
-      filter: dup ? `filter:brightness(${Math.max(0.55, 1 - 0.16 * dup)});` : "",
-    };
-  });
+  const segs = state.tiers.map((t, j) => ({
+    name: t.name,
+    p: o.bestTier ? o.bestTier[j] : 0,
+    col: tierColor(j, m),
+  }));
   $("bar").innerHTML = segs
     .filter(s => s.p > 0.0005)
-    .map(s => `<div class="seg-${s.cls}" style="flex-grow:${(s.p * 1000).toFixed(0)};${s.filter}" title="Best task on offer is “${esc(s.name)}”: ${pct(s.p)}"></div>`)
+    .map(s => `<div style="flex-grow:${(s.p * 1000).toFixed(0)};background:${s.col}" title="Best task on offer is “${esc(s.name)}”: ${pct(s.p)}"></div>`)
     .join("");
   $("legend").innerHTML = segs
-    .map(s => `<li><span class="swatch seg-${s.cls}" style="${s.filter}"></span>${esc(s.name)}<span class="val">${pct(s.p)}</span></li>`)
+    .map(s => `<li><span class="swatch" style="background:${s.col}"></span>${esc(s.name)}<span class="val">${pct(s.p)}</span></li>`)
     .join("");
 
-  const st = MortimerMath.strategyStats(o, SKIP_COST);
-  $("t-allbad").textContent = pB > 0 ? pct(pB) : "0%";
+  $("t-nothing").textContent = pool.length ? pct(pNothing) : "—";
   $("t-rolls").textContent = pFocus > 0 ? (1 / pFocus).toFixed(1) : "—";
   $("t-skipcost").textContent = pFocus > 0 ? Math.round(SKIP_COST * (1 - pFocus) / pFocus) + " pts" : "—";
-  $("t-patient").textContent = (pD + pN) > 0 ? pct0(st.patientDesiredShare) : "—";
+  $("t-best").textContent = o.bestTier ? pct(o.bestTier[fIdx]) : "—";
 
   const blockSpend = state.blocked.length * BLOCK_COST;
-  const skipsPerTask = st.patientSkipsPerTask;
+  const skipsPerTask = pNothing < 1 ? pNothing / (1 - pNothing) : Infinity;
+  const focusName = state.tiers[fIdx].name;
   $("fine").innerHTML = [
-    `<b>${nDesired}</b> desired · <b>${nNeutral}</b> neutral · <b>${nBad}</b> bad · <b>${state.blocked.length}</b>/${MAX_BLOCKS} blocked${blockSpend ? ` (${blockSpend} pts)` : ""}.`,
-    pB > 0 ? `Skipping only all-bad offers costs ≈ <b>${Number.isFinite(skipsPerTask) ? Math.round(skipsPerTask * SKIP_COST) : "∞"} pts</b> per completed task (${(skipsPerTask * 100).toFixed(1)} skips per 100 tasks).` : "",
-    `Each offer roll is independent; “offers per desired task” is the mean of a geometric distribution, 1∕p.`,
+    `<b>${pool.length}</b> creatures in the pool · <b>${state.blocked.length}</b>/${MAX_BLOCKS} blocked${blockSpend ? ` (${blockSpend} pts)` : ""}.`,
+    pNothing > 0 && pNothing < 1 ? `Skipping every offer with nothing “${esc(focusName)}”-or-better costs ≈ <b>${Math.round(skipsPerTask * SKIP_COST)} pts</b> per kept offer (${(skipsPerTask * 100).toFixed(1)} skips per 100).` : "",
+    `Each offer roll is independent; “offers until one appears” is the mean of a geometric distribution, 1∕p.`,
   ].filter(Boolean).join(" ");
 }
 
@@ -430,37 +398,29 @@ function refresh() {
   save();
 }
 
-// ————— tier board events —————
+// ————— drag & drop: chips —————
 
 const tiersEl = $("tiers");
 
-tiersEl.addEventListener("dragstart", e => {
-  const chip = e.target.closest(".crea");
-  if (!chip) return;
-  dragName = chip.dataset.name;
-  e.dataTransfer.effectAllowed = "move";
-  e.dataTransfer.setData("text/plain", dragName);
-  chip.classList.add("dragging");
-});
+/* Insertion position for a drop at (x, y) among the zone's chips,
+ * reading order (wrapped flex rows): before the first chip whose row
+ * is below the point, or whose center is right of it in the same row. */
+function insertionIndex(zone, x, y, excludeName) {
+  const chips = [...zone.querySelectorAll(".crea")].filter(c => c.dataset.name !== excludeName);
+  for (let i = 0; i < chips.length; i++) {
+    const r = chips[i].getBoundingClientRect();
+    if (y < r.top || (y <= r.bottom && x < r.left + r.width / 2)) return i;
+  }
+  return chips.length;
+}
 
-tiersEl.addEventListener("dragend", () => {
-  dragName = null;
-  hideDropMarker();
-  document.querySelectorAll(".drag-over, .dragging").forEach(x => x.classList.remove("drag-over", "dragging"));
-});
-
-/* The insertion-boundary marker shown while dragging. */
-function dropMarker() {
+/* The insertion-boundary marker shown while dragging a chip. */
+function showDropMarker(zone, x, y, excludeName) {
   let m = document.getElementById("drop-marker");
   if (!m) {
     m = document.createElement("div");
     m.id = "drop-marker";
   }
-  return m;
-}
-
-function showDropMarker(zone, x, y, excludeName) {
-  const m = dropMarker();
   const idx = insertionIndex(zone, x, y, excludeName);
   const chips = [...zone.querySelectorAll(".crea")].filter(c => c.dataset.name !== excludeName);
   const zr = zone.getBoundingClientRect();
@@ -484,7 +444,73 @@ function hideDropMarker() {
   document.getElementById("drop-marker")?.remove();
 }
 
+// ————— drag & drop: tier rows —————
+
+function tierInsertionIndex(y) {
+  const rows = [...tiersEl.querySelectorAll(".tier")];
+  for (let i = 0; i < rows.length; i++) {
+    const r = rows[i].getBoundingClientRect();
+    if (y < r.top + r.height / 2) return i;
+  }
+  return rows.length;
+}
+
+function showTierMarker(y) {
+  let m = document.getElementById("tier-marker");
+  if (!m) {
+    m = document.createElement("div");
+    m.id = "tier-marker";
+  }
+  const rows = [...tiersEl.querySelectorAll(".tier")];
+  if (!rows.length) return;
+  const idx = tierInsertionIndex(y);
+  const cr = tiersEl.getBoundingClientRect();
+  const top = idx < rows.length
+    ? rows[idx].getBoundingClientRect().top - cr.top - 1
+    : rows[rows.length - 1].getBoundingClientRect().bottom - cr.top - 1;
+  m.style.top = top + "px";
+  if (m.parentElement !== tiersEl) tiersEl.appendChild(m);
+}
+
+function hideTierMarker() {
+  document.getElementById("tier-marker")?.remove();
+}
+
+// ————— drag events —————
+
+tiersEl.addEventListener("dragstart", e => {
+  const grip = e.target.closest(".tier-grip");
+  if (grip) {
+    dragTier = grip.closest(".tier").dataset.tier;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", "tier:" + dragTier);
+    grip.closest(".tier").classList.add("dragging");
+    return;
+  }
+  const chip = e.target.closest(".crea");
+  if (!chip) return;
+  dragName = chip.dataset.name;
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", dragName);
+  chip.classList.add("dragging");
+});
+
+tiersEl.addEventListener("dragend", () => {
+  dragName = null;
+  dragTier = null;
+  hideDropMarker();
+  hideTierMarker();
+  document.querySelectorAll(".drag-over, .dragging").forEach(x => x.classList.remove("drag-over", "dragging"));
+});
+
 tiersEl.addEventListener("dragover", e => {
+  if (dragTier) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    showTierMarker(e.clientY);
+    return;
+  }
+  if (!dragName) return;
   const zone = e.target.closest(".tier-drop");
   if (!zone) return;
   e.preventDefault();
@@ -501,26 +527,30 @@ tiersEl.addEventListener("dragleave", e => {
   }
 });
 
-/* Insertion position for a drop at (x, y) among the zone's chips,
- * reading order (wrapped flex rows): before the first chip whose row
- * is below the point, or whose center is right of it in the same row. */
-function insertionIndex(zone, x, y, excludeName) {
-  const chips = [...zone.querySelectorAll(".crea")].filter(c => c.dataset.name !== excludeName);
-  for (let i = 0; i < chips.length; i++) {
-    const r = chips[i].getBoundingClientRect();
-    if (y < r.top || (y <= r.bottom && x < r.left + r.width / 2)) return i;
-  }
-  return chips.length;
-}
-
 tiersEl.addEventListener("drop", e => {
+  if (dragTier) {
+    e.preventDefault();
+    hideTierMarker();
+    const from = state.tiers.findIndex(t => t.id === dragTier);
+    let to = tierInsertionIndex(e.clientY);
+    dragTier = null;
+    if (from !== -1) {
+      if (to > from) to--;
+      if (to !== from) {
+        const [t] = state.tiers.splice(from, 1);
+        state.tiers.splice(to, 0, t);
+      }
+    }
+    refresh();
+    return;
+  }
   const zone = e.target.closest(".tier-drop");
   if (!zone) return;
   e.preventDefault();
   hideDropMarker();
   const name = dragName || e.dataTransfer.getData("text/plain");
   dragName = null;
-  if (!name || !zone.dataset.drop) return;
+  if (!name || !zone.dataset.drop || !TASK_BY_NAME[name]) return;
   const tid = zone.dataset.drop;
   const idx = insertionIndex(zone, e.clientX, e.clientY, name);
   state.placement[name] = tid;
@@ -531,6 +561,8 @@ tiersEl.addEventListener("drop", e => {
   (state.tierOrder[tid] = state.tierOrder[tid] || []).splice(idx, 0, name);
   refresh();
 });
+
+// ————— tier board events —————
 
 // chip selection
 tiersEl.addEventListener("click", e => {
@@ -547,10 +579,7 @@ tiersEl.addEventListener("click", e => {
   const idx = state.tiers.findIndex(t => t.id === row?.dataset.tier);
   if (idx === -1) return;
   const act = btn.dataset.tact;
-  if (act === "cls") {
-    const t = state.tiers[idx];
-    t.cls = CLS_ORDER[(CLS_ORDER.indexOf(t.cls) + 1) % CLS_ORDER.length];
-  } else if (act === "up" && idx > 0) {
+  if (act === "up" && idx > 0) {
     [state.tiers[idx - 1], state.tiers[idx]] = [state.tiers[idx], state.tiers[idx - 1]];
   } else if (act === "down" && idx < state.tiers.length - 1) {
     [state.tiers[idx + 1], state.tiers[idx]] = [state.tiers[idx], state.tiers[idx + 1]];
@@ -573,6 +602,12 @@ tiersEl.addEventListener("change", e => {
   const t = state.tiers.find(x => x.id === e.target.closest(".tier")?.dataset.tier);
   if (!t) return;
   t.name = inp.value.trim() || t.name;
+  refresh();
+});
+
+$("add-tier").addEventListener("click", () => {
+  state.tierSeq = Math.max(state.tierSeq || 0, state.tiers.length) + 1;
+  state.tiers.push({ id: "t" + state.tierSeq, name: "Tier " + (state.tiers.length + 1) });
   refresh();
 });
 
@@ -629,12 +664,6 @@ document.addEventListener("keydown", e => {
 
 window.addEventListener("resize", positionPopover);
 
-$("add-tier").addEventListener("click", () => {
-  state.tierSeq = Math.max(state.tierSeq || 0, state.tiers.length) + 1;
-  state.tiers.push({ id: "t" + state.tierSeq, name: "Tier " + (state.tiers.length + 1), cls: "neutral" });
-  refresh();
-});
-
 // ————— control events —————
 
 $("level").addEventListener("change", e => {
@@ -673,6 +702,7 @@ $("reset").addEventListener("click", () => {
   state.tierOrder = {};
   state.tiers = defaultTiers();
   state.tierSeq = 3;
+  state.focusTier = "t1";
   selectedName = null;
   refresh();
 });

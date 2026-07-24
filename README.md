@@ -6,14 +6,14 @@ Source: [Meet Mortimer: Your Newest Slayer Master](https://secure.runescape.com/
 
 ## The app: Mortimer's Ledger
 
-An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). The primary interface is a TierMaker-style **tier board**: every creature starts in Neutral; drag chips between tiers, add/rename/reorder/delete tiers, each tier counting as **✓ desired**, **· neutral**, or **✗ bad** toward the odds. Chips show each creature's chance of appearing in an offer; clicking a chip opens a config drawer with its stat ranges, a block toggle (max 2, 120 pts each), a tier select, and its per-modifier rules. Set your Slayer level / offer count (2, or 3 after 100 tasks) / Venators quest status / which modifiers you've unlocked (clue at 25 tasks, XP at 50, Superior at 75), and it computes:
+An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). The primary interface is a TierMaker-style **tier board** of purely *ordinal* tiers — the top tier is the best, and rank alone carries meaning (no good/bad labels). Every creature starts in the middle tier. Drag chips between tiers (with a live insertion marker; manual order is preserved), drag a tier's ⠿ grip to reorder tiers, and add/rename/delete tiers freely. Chips show each creature's chance of appearing in an offer; clicking one opens a floating card with its stat ranges, a block toggle (max 2, 120 pts each), a tier select, and its per-modifier rules. Set your Slayer level / offer count (2, or 3 after 100 tasks) / Venators quest status / which modifiers you've unlocked (clue at 25 tasks, XP at 50, Superior at 75), and the results card computes, for whichever tier you focus:
 
-- P(next offer contains a desired task), P(neutral at best), P(all offers bad)
-- Expected offers per desired task and average skip cost (100 pts/skip) to reach one
-- Share of completed tasks that are desired under a patient strategy (skip only all-bad offers), and its point cost per task
-- Per-creature chance of appearing in an offer
+- P(next offer contains a task landing in the focused tier), and in that tier *or better*
+- The exact distribution of the best tier on offer (one bar segment per tier)
+- Expected offers until a focused-tier task appears, and the average skip cost (100 pts/skip) to get there
+- Per-tier hit chances in each tier row, and per-creature offer chances on each chip
 
-**Per-task Mortifier rules** (click any chip): every offered task carries exactly one modifier, so for each creature you can declare that a given modifier moves it on the tier board — **▲ up one tier**, **▼ down one tier** (demotion is allowed), or **→ any specific tier**. Relative moves clamp at the board's ends. The drawer shows that creature's actual rolled ranges (e.g. Bloodveld's Superior modifier is +100–150%). A creature's effective P(desired)/P(bad) averages over its applicable modifiers — uniform per the FAQ, independent between the tasks of one offer. Creatures with no clue table roll from their remaining modifier types. Deleting a tier moves its creatures to the default (first neutral) tier and clears rules that pointed at it.
+**Per-task Mortifier rules** (click any chip): every offered task carries exactly one modifier, so for each creature you can declare that a given modifier moves it on the tier board — **▲ up one tier**, **▼ down one tier**, or **→ any specific tier**. Relative moves clamp at the board's ends. The card shows that creature's actual rolled ranges (e.g. Bloodveld's Superior modifier is +100–150%) and its chance of being moved up (▲) or down (▼) by whatever modifier rolls — uniform over applicable types per the FAQ, independent between the tasks of one offer. Creatures with no clue table roll from their remaining modifier types. Deleting a tier moves its creatures to the middle tier and clears rules that pointed at it.
 
 The math lives in [math.js](math.js) (shared between the browser and node) and enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. Labels persist in `localStorage`.
 

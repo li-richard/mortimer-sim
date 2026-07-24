@@ -77,8 +77,8 @@
     }
 
     const w = pool.map(t => t.weight);
-    const d = pool.map(t => t.dProb);
-    const b = pool.map(t => t.bProb);
+    const d = pool.map(t => t.dProb || 0);
+    const b = pool.map(t => t.bProb || 0);
     const tp = m ? pool.map(t => t.tierProbs) : null;
     // cum[i][j] = P(slot i lands in tier j or worse); cum[i][m] = 0
     const cum = m ? pool.map(t => {

@@ -51,7 +51,7 @@
   <section class="tierboard" aria-label="Tier board">
     <div class="tb-head">
       <h2>The Tier Board</h2>
-      <p>Drag creatures between tiers; click one to set its modifier rules and blocks. Each tier counts as <span class="tb-d">✓ desired</span>, <span class="tb-n">· neutral</span>, or <span class="tb-b">✗ bad</span> toward the odds — click the mark to change it.</p>
+      <p>Rank creatures top-to-bottom — the top tier is the best. Drag chips between tiers, drag the ⠿ grip to reorder tiers, click a chip for its modifier rules and blocks.</p>
       <button id="add-tier" class="ghost">+ Add tier</button>
     </div>
     <div id="tiers"></div>
@@ -71,10 +71,10 @@
     </div>
 
     <div class="tiles">
-      <div class="tile"><p class="t-num" id="t-allbad">—</p><p class="t-label">offer is all bad<br>(skip · store · suffer)</p></div>
+      <div class="tile"><p class="t-num" id="t-nothing">—</p><p class="t-label">nothing this tier or<br>better on offer</p></div>
       <div class="tile"><p class="t-num" id="t-rolls">—</p><p class="t-label">offers until<br>one appears</p></div>
       <div class="tile"><p class="t-num" id="t-skipcost">—</p><p class="t-label">avg points skipping<br>until one appears</p></div>
-      <div class="tile"><p class="t-num" id="t-patient">—</p><p class="t-label">tasks desired if you<br>skip only all-bad offers</p></div>
+      <div class="tile"><p class="t-num" id="t-best">—</p><p class="t-label">offers where it’s<br>the best available</p></div>
     </div>
 
     <div class="fine" id="fine"></div>
