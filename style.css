@@ -208,7 +208,14 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
   border-left: 1px solid var(--hairline-faint);
   color: var(--ink-3); font-size: 11px; font-variant-numeric: tabular-nums;
 }
-.crea.c-rules .c-off::after { content: "▸"; color: var(--gold-dim); margin-left: 4px; font-size: 9px; }
+.crea.c-rules { border-color: rgba(211,167,85,0.45); }
+.crea .c-mv {
+  margin-left: 5px; font-size: 10.5px; line-height: 1;
+  padding: 2px 3px; border-radius: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.crea .c-up { color: var(--desired-ink); background: rgba(12,163,12,0.13); }
+.crea .c-down { color: var(--bad-ink); background: rgba(208,59,59,0.13); }
 .crea.dragging { opacity: 0.45; }
 .crea.c-blocked { text-decoration: line-through; opacity: 0.55; }
 .crea.c-locked { opacity: 0.35; }

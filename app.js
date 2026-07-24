@@ -192,6 +192,32 @@ const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(
 const $ = id => document.getElementById(id);
 const TASK_BY_NAME = Object.fromEntries(TASKS.map(t => [t.name, t]));
 
+/* Rules that actually apply (their modifier type is unlocked), as
+ * { def, rule, targetIdx } plus the up/down chances they produce. */
+function activeRules(t) {
+  const tr = state.taskRules[t.name] || {};
+  const baseIdx = tierIndexOf(t.name);
+  const defs = creatureModDefs(t).filter(d => !d.unlock || state.modUnlocked[d.unlock]);
+  const rules = defs
+    .map(d => ({ def: d, raw: tr[d.key] }))
+    .filter(r => r.raw && r.raw !== "none")
+    .map(r => ({ ...r, idx: MortimerMath.resolveTier(baseIdx, normRule(r.raw), state.tiers.length) }))
+    .filter(r => r.idx !== baseIdx);
+  const n = defs.length || 1;
+  return {
+    rules,
+    up: rules.filter(r => r.idx < baseIdx).length / n,
+    down: rules.filter(r => r.idx > baseIdx).length / n,
+  };
+}
+
+function ruleLabel(raw) {
+  if (raw === "up") return "▲ up one tier";
+  if (raw === "down") return "▼ down one tier";
+  const tier = state.tiers.find(x => "to:" + x.id === raw);
+  return tier ? "→ " + tier.name : raw;
+}
+
 function chipHtml(t, odds) {
   const blocked = state.blocked.includes(t.name);
   const tooHigh = t.level > state.level;
@@ -202,11 +228,20 @@ function chipHtml(t, odds) {
     : noQuest ? "quest"
     : p !== undefined ? pct(p) : "—";
   const note = blocked ? " · blocked" : tooHigh ? ` · needs ${t.level} Slayer` : noQuest ? " · needs Blood Moon Rises" : "";
+  const { rules, up, down } = activeRules(t);
+  const marks = [
+    up > 0 ? `<span class="c-mv c-up">▲${Math.round(up * 100)}</span>` : "",
+    down > 0 ? `<span class="c-mv c-down">▼${Math.round(down * 100)}</span>` : "",
+  ].join("");
+  const ruleNote = rules.length
+    ? "\n" + rules.map(r => `${r.def.name}: ${ruleLabel(r.raw)}`).join("\n")
+    : "";
   return `<div class="crea ${blocked ? "c-blocked" : ""} ${tooHigh || noQuest ? "c-locked" : ""}
-      ${selectedName === t.name ? "c-sel" : ""} ${state.taskRules[t.name] ? "c-rules" : ""}"
+      ${selectedName === t.name ? "c-sel" : ""} ${rules.length ? "c-rules" : ""}"
     draggable="true" data-name="${t.name}"
-    title="${t.name} · lvl ${t.level}${t.weight === 8 ? " · weight 8" : ""}${note} — click to configure, drag to re-tier">
-    ${t.name}<small>${t.level}</small><span class="c-off">${off}</span></div>`;
+    title="${t.name} · lvl ${t.level}${t.weight === 8 ? " · weight 8" : ""}${note}${ruleNote}
+— click to configure, drag to re-tier">
+    ${t.name}<small>${t.level}</small><span class="c-off">${off}</span>${marks}</div>`;
 }
 
 /* Custom listbox — a native <select> can't have its popup list styled
@@ -237,10 +272,7 @@ function popoverHtml(t, odds) {
     : noQuest ? "needs Blood Moon Rises"
     : p !== undefined ? pct(p) + " offered" : "";
   // chance its rolled modifier moves it to a better / worse tier
-  const baseIdx = tierIndexOf(t.name);
-  const idxs = slotTierIdxs(t);
-  const up = idxs.filter(i => i !== null && i < baseIdx).length / idxs.length;
-  const down = idxs.filter(i => i !== null && i > baseIdx).length / idxs.length;
+  const { up, down } = activeRules(t);
   const chips = [
     up > 0 ? `<span class="chip chip-d" title="Chance its modifier lands it in a better tier">▲${Math.round(up * 100)}%</span>` : "",
     down > 0 ? `<span class="chip chip-b" title="Chance its modifier lands it in a worse tier">▼${Math.round(down * 100)}%</span>` : "",
