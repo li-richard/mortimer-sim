@@ -17,7 +17,7 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
-const { computeOdds, strategyStats, promote, slotProbs } = require("../math.js");
+const { computeOdds, strategyStats, resolveTier, slotProbs } = require("../math.js");
 
 let failures = 0;
 function check(name, actual, expected, tol = 1e-12) {
@@ -70,27 +70,26 @@ const binom = (n, k) => {
 const dataSrc = fs.readFileSync(path.join(__dirname, "..", "data.js"), "utf8");
 const TASKS = JSON.parse(dataSrc.match(/const TASKS = (\[[\s\S]*\]);/)[1]);
 
-// ————— promote / slotProbs unit checks —————
+// ————— resolveTier / slotProbs unit checks —————
 
-console.log("— promotion rules —");
-check("bad +1 tier → neutral", promote("bad", "tier") === "neutral" ? 1 : 0, 1);
-check("neutral +1 tier → desired", promote("neutral", "tier") === "desired" ? 1 : 0, 1);
-check("desired +1 tier stays desired", promote("desired", "tier") === "desired" ? 1 : 0, 1);
-check("bad → neutral rule", promote("bad", "neutral") === "neutral" ? 1 : 0, 1);
-check("desired never demoted by → neutral", promote("desired", "neutral") === "desired" ? 1 : 0, 1);
-check("→ desired promotes anything", promote("bad", "desired") === "desired" ? 1 : 0, 1);
+console.log("— tier resolution —");
+check("up from tier 2 of 4 → 1", resolveTier(2, "up", 4), 1);
+check("up caps at the top", resolveTier(0, "up", 4), 0);
+check("down from tier 1 of 4 → 2", resolveTier(1, "down", 4), 2);
+check("down caps at the bottom", resolveTier(3, "down", 4), 3);
+check("absolute jump", resolveTier(3, 0, 4), 0);
+check("absolute jump clamps", resolveTier(0, 9, 4), 3);
+check("none stays put", resolveTier(2, "none", 4), 2);
+check("unranked + relative move stays unranked", resolveTier(null, "up", 4) === null ? 1 : 0, 1);
+check("unranked + absolute jump lands", resolveTier(null, 2, 4), 2);
 {
-  // bad task, 4 applicable modifiers: none, +1 tier, none, → desired
-  const s = slotProbs("bad", ["none", "tier", "none", "desired"]);
-  check("slotProbs bad: dProb = 1/4", s.dProb, 0.25);
-  check("slotProbs bad: bProb = 2/4", s.bProb, 0.5);
-  const s2 = slotProbs("neutral", ["none", "tier", "neutral", "desired", "none"]);
-  check("slotProbs neutral: dProb = 2/5", s2.dProb, 0.4);
-  check("slotProbs neutral: bProb = 0", s2.bProb, 0);
-  const s3 = slotProbs("desired", ["none", "none"]);
-  check("slotProbs desired: dProb = 1", s3.dProb, 1);
-  const s4 = slotProbs("bad", []);
-  check("no modifiers: binary bad", s4.bProb, 1);
+  const s = slotProbs(["bad", "neutral", "bad", "desired"]);
+  check("slotProbs: dProb = 1/4", s.dProb, 0.25);
+  check("slotProbs: bProb = 2/4", s.bProb, 0.5);
+  const s2 = slotProbs(["desired", "desired"]);
+  check("slotProbs all desired: dProb = 1", s2.dProb, 1);
+  const s3 = slotProbs([]);
+  check("empty classes: dProb = 0", s3.dProb, 0);
 }
 
 // ————— binary labels: full pool vs exact complementary counting —————
@@ -191,21 +190,27 @@ console.log("— seeded Monte Carlo of draw + modifier roll + promotion, full po
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 
-  const desired = new Set(["Araxytes", "Smoke Devils"]);
-  const bad = new Set(["Crawling Hands", "Cave Crawlers", "Rockslugs", "Jellies"]);
-  const label = t => desired.has(t.name) ? "desired" : bad.has(t.name) ? "bad" : "neutral";
-  // rules: fewer-kills promotes one tier, superior-unique makes desired,
-  // clue floors at neutral; xp modifier locked (only 4 types roll)
+  // tier list: 0 = Desired, 1 = Neutral, 2 = Bad (5 tiers to exercise clamps)
+  const TIER_CLS = ["desired", "desired", "neutral", "bad", "bad"];
+  const baseIdx = t =>
+    ["Araxytes", "Smoke Devils"].includes(t.name) ? 0 :
+    ["Hydras"].includes(t.name) ? 1 :
+    ["Crawling Hands", "Cave Crawlers"].includes(t.name) ? 4 :
+    ["Rockslugs", "Jellies"].includes(t.name) ? 3 :
+    ["Turoth"].includes(t.name) ? null : 2; // Turoth unranked
+  // rules: fewer-kills moves up a tier, superior jumps to tier 0,
+  // clue jumps to tier 2, xp modifier locked (only 4 types roll)
   const rules = t => {
-    const r = ["none" /* points */, t.qty[0] < 0 ? "tier" : "none" /* qty */];
-    if (t.clue) r.push("neutral"); // clue unlocked
-    r.push("desired");             // superior unlocked
-    return r;                      // xp NOT unlocked
+    const r = ["none" /* points */, t.qty[0] < 0 ? "up" : "none" /* qty */];
+    if (t.clue) r.push(2); // clue unlocked, jumps to the middle tier
+    r.push(0);             // superior unlocked, jumps to the top
+    return r;              // xp NOT unlocked
   };
+  const clsOf = idx => idx === null ? "neutral" : TIER_CLS[idx];
 
   const pool = TASKS.map(t => {
-    const { dProb, bProb } = slotProbs(label(t), rules(t));
-    return { name: t.name, weight: t.weight, dProb, bProb, task: t };
+    const classes = rules(t).map(r => clsOf(resolveTier(baseIdx(t), r, TIER_CLS.length)));
+    return { name: t.name, weight: t.weight, ...slotProbs(classes), task: t };
   });
   const o = computeOdds(pool, 3);
 
@@ -222,7 +227,7 @@ console.log("— seeded Monte Carlo of draw + modifier roll + promotion, full po
       const c = left.splice(idx, 1)[0];
       remW -= c.weight;
       const rs = rules(c.task);
-      const eff = promote(label(c.task), rs[Math.floor(rand() * rs.length)]);
+      const eff = clsOf(resolveTier(baseIdx(c.task), rs[Math.floor(rand() * rs.length)], TIER_CLS.length));
       if (eff === "desired") anyD = true;
       if (eff !== "bad") allB = false;
     }

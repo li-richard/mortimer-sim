@@ -6,42 +6,91 @@ const SKIP_COST = 100;
 const BLOCK_COST = 120;
 const MAX_BLOCKS = 2;
 
+const CLS_ORDER = ["desired", "neutral", "bad"];
+const CLS_ICON = { desired: "✓", neutral: "·", bad: "✗" };
+
+function defaultTiers() {
+  return [
+    { id: "t1", name: "Desired", cls: "desired" },
+    { id: "t2", name: "Neutral", cls: "neutral" },
+    { id: "t3", name: "Bad", cls: "bad" },
+  ];
+}
+
 const state = {
   level: 99,
   offers: 3,
   venators: true,
-  labels: {},   // name -> "desired" | "bad"  (absent = neutral)
   blocked: [],  // names, max 2
   // which optional modifier types are unlocked (points & quantity are always on)
   modUnlocked: { clue: true, xp: true, sup: true },
-  // per-creature promotion rules: name -> { points|qty|clue|xp|sup: "tier"|"neutral"|"desired" }
-  // (absent key = no effect)
+  // ordered tier list, index 0 = best
+  tiers: defaultTiers(),
+  tierSeq: 3,
+  // creature name -> tier id; every creature is always placed (default: neutral)
+  placement: {},
+  // per-creature modifier rules: name -> { points|qty|clue|xp|sup: "up"|"down"|"to:<tierId>" }
   taskRules: {},
 };
 
-// rows expanded to show the per-task modifier editor (UI-only, not persisted)
-const expanded = new Set();
+// UI-only state, not persisted
+let selectedName = null;
+let dragName = null;
 
-const RULE_OPTS = [
-  { v: "none", t: "—", title: "No effect on your verdict" },
-  { v: "tier", t: "+1 tier", title: "Bad becomes neutral; neutral becomes desired" },
-  { v: "neutral", t: "→ neutral", title: "A bad task becomes neutral" },
-  { v: "desired", t: "→ desired", title: "Any task with this modifier becomes desired" },
-];
-
-// ————— persistence —————
+// ————— persistence + migration —————
 
 function save() { localStorage.setItem(LS_KEY, JSON.stringify(state)); }
+
 function load() {
-  try {
-    const s = JSON.parse(localStorage.getItem(LS_KEY));
-    if (s && typeof s === "object") Object.assign(state, s);
-  } catch (e) { /* fresh start */ }
-  delete state.modRules; // pre-per-task-rules saves had a global rule set
-  if (!state.taskRules || typeof state.taskRules !== "object") state.taskRules = {};
+  let s = null;
+  try { s = JSON.parse(localStorage.getItem(LS_KEY)); } catch (e) { /* fresh start */ }
+  if (s && typeof s === "object") {
+    const labels = s.labels; // pre-tier-board saves labeled creatures directly
+    delete s.labels;
+    delete s.modRules;
+    Object.assign(state, s);
+    if (!Array.isArray(state.tiers) || !state.tiers.length) state.tiers = defaultTiers();
+    if (!state.placement || typeof state.placement !== "object") state.placement = {};
+    if (!state.taskRules || typeof state.taskRules !== "object") state.taskRules = {};
+    if (labels && typeof labels === "object") {
+      for (const [name, lab] of Object.entries(labels)) {
+        const tier = state.tiers.find(t => t.cls === lab);
+        if (tier) state.placement[name] = tier.id;
+      }
+    }
+    // migrate the pre-tier rule vocabulary to tier operations
+    for (const [name, rules] of Object.entries(state.taskRules)) {
+      for (const [k, v] of Object.entries(rules)) {
+        if (v === "tier") rules[k] = "up";
+        else if (v === "neutral" || v === "desired") {
+          const tier = state.tiers.find(t => t.cls === v);
+          rules[k] = tier ? "to:" + tier.id : "none";
+        }
+        if (rules[k] === "none") delete rules[k];
+      }
+      if (!Object.keys(rules).length) delete state.taskRules[name];
+    }
+  }
+  ensurePlacements();
 }
 
-// ————— pool + math —————
+/* Every creature always sits in a tier; the default home is the first
+ * neutral-class tier (or the middle tier if none is neutral). */
+function defaultTierId() {
+  const t = state.tiers.find(x => x.cls === "neutral") ||
+    state.tiers[Math.floor((state.tiers.length - 1) / 2)];
+  return t.id;
+}
+
+function ensurePlacements() {
+  const def = defaultTierId();
+  for (const t of TASKS) {
+    const id = state.placement[t.name];
+    if (!id || !state.tiers.some(x => x.id === id)) state.placement[t.name] = def;
+  }
+}
+
+// ————— pool + tiers —————
 
 function inPool(t) {
   return t.level <= state.level &&
@@ -49,10 +98,18 @@ function inPool(t) {
     !state.blocked.includes(t.name);
 }
 
-function labelOf(name) { return state.labels[name] || "neutral"; }
+function tierIndexOf(name) {
+  const i = state.tiers.findIndex(t => t.id === state.placement[name]);
+  return i === -1 ? null : i;
+}
+
+function classOf(name) {
+  const i = tierIndexOf(name);
+  return i === null ? "neutral" : state.tiers[i].cls;
+}
 
 /* The modifier types that can land on this creature, with its own
- * rolled ranges (for the editor UI). */
+ * rolled ranges (for the drawer UI). */
 function creatureModDefs(t) {
   const defs = [
     { key: "points", name: "Slayer points", range: `+${t.pts[0]}–${t.pts[1]} pts` },
@@ -66,21 +123,36 @@ function creatureModDefs(t) {
   return defs;
 }
 
-/* This creature's promotion rules: one entry per applicable unlocked
- * modifier type, each equally likely to roll. */
-function creatureRules(t) {
+/* "up" | "down" stay symbolic; "to:<tierId>" resolves to a tier index. */
+function normRule(v) {
+  if (!v || v === "none") return "none";
+  if (v === "up" || v === "down") return v;
+  if (v.startsWith("to:")) {
+    const idx = state.tiers.findIndex(t => t.id === v.slice(3));
+    return idx === -1 ? "none" : idx;
+  }
+  return "none";
+}
+
+/* Outcome class this creature ends up as under each of its applicable
+ * unlocked modifiers (each equally likely to roll). */
+function slotClasses(t) {
+  const baseIdx = tierIndexOf(t.name);
   const r = state.taskRules[t.name] || {};
   return creatureModDefs(t)
     .filter(d => !d.unlock || state.modUnlocked[d.unlock])
-    .map(d => r[d.key] || "none");
+    .map(d => {
+      const idx = MortimerMath.resolveTier(baseIdx, normRule(r[d.key]), state.tiers.length);
+      return idx === null ? "neutral" : state.tiers[idx].cls;
+    });
 }
 
 function computeOdds() {
   const pool = TASKS.filter(inPool);
-  const entries = pool.map(t => {
-    const { dProb, bProb } = MortimerMath.slotProbs(labelOf(t.name), creatureRules(t));
-    return { name: t.name, weight: t.weight, dProb, bProb };
-  });
+  const entries = pool.map(t => ({
+    name: t.name, weight: t.weight,
+    ...MortimerMath.slotProbs(slotClasses(t)),
+  }));
   const odds = MortimerMath.computeOdds(entries, state.offers);
   return { ...odds, pool, slot: Object.fromEntries(entries.map(e => [e.name, e])) };
 }
@@ -89,6 +161,7 @@ function computeOdds() {
 
 const pct = x => (x * 100).toFixed(1) + "%";
 const pct0 = x => (x * 100).toFixed(0) + "%";
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 // ————— rendering —————
 
@@ -109,93 +182,113 @@ function detailLine(t) {
   return bits.join('<span class="sep">·</span>');
 }
 
-function editorHtml(t) {
+function chipHtml(t, odds) {
+  const blocked = state.blocked.includes(t.name);
+  const tooHigh = t.level > state.level;
+  const noQuest = t.name === "Venators" && !state.venators;
+  const p = odds.appear[t.name];
+  const off = blocked ? "⛨"
+    : tooHigh ? `lvl ${t.level}`
+    : noQuest ? "quest"
+    : p !== undefined ? pct(p) : "—";
+  const note = blocked ? " · blocked" : tooHigh ? ` · needs ${t.level} Slayer` : noQuest ? " · needs Blood Moon Rises" : "";
+  return `<div class="crea ${blocked ? "c-blocked" : ""} ${tooHigh || noQuest ? "c-locked" : ""}
+      ${selectedName === t.name ? "sel" : ""} ${state.taskRules[t.name] ? "c-rules" : ""}"
+    draggable="true" data-name="${t.name}"
+    title="${t.name} · lvl ${t.level}${t.weight === 8 ? " · weight 8" : ""}${note} — click to configure, drag to re-tier">
+    ${t.name}<small>${t.level}</small><span class="c-off">${off}</span></div>`;
+}
+
+function drawerHtml(t, odds) {
+  const blocked = state.blocked.includes(t.name);
+  const slot = odds.slot[t.name];
+  const cls = classOf(t.name);
+  let chips = "";
+  if (slot) {
+    const baseD = cls === "desired" ? 1 : 0;
+    const baseB = cls === "bad" ? 1 : 0;
+    const parts = [];
+    if (slot.dProb !== baseD)
+      parts.push(`<span class="chip chip-d" title="Chance it counts desired once its modifier rolls">✓${Math.round(slot.dProb * 100)}%</span>`);
+    if (slot.bProb !== baseB)
+      parts.push(`<span class="chip chip-b" title="Chance it counts bad once its modifier rolls">✗${Math.round(slot.bProb * 100)}%</span>`);
+    chips = parts.join("");
+  }
   const tr = state.taskRules[t.name] || {};
-  return `<div class="mods-editor" data-name="${t.name}">
-    ${creatureModDefs(t).map(d => {
-      const unlocked = !d.unlock || state.modUnlocked[d.unlock];
-      const cur = tr[d.key] || "none";
-      return `<div class="rm-row ${unlocked ? "" : "rm-off"}" data-modkey="${d.key}">
-        <span class="rm-name">${d.name} <small>${d.range}</small>${unlocked ? "" : ' <small class="rm-lock">locked</small>'}</span>
-        <div class="seg rm-seg" role="group" aria-label="${d.name} rule for ${t.name}">
-          ${RULE_OPTS.map(o => `<button data-rule="${o.v}" title="${o.title}"
-            class="${cur === o.v ? "on" : ""}" ${unlocked ? "" : "disabled"}>${o.t}</button>`).join("")}
-        </div>
-      </div>`;
-    }).join("")}
+  const curTier = state.placement[t.name];
+  const tierOpts = state.tiers.map(x =>
+    `<option value="${x.id}" ${x.id === curTier ? "selected" : ""}>${esc(x.name)}</option>`).join("");
+  const ruleOpts = cur => [
+    `<option value="none" ${!cur || cur === "none" ? "selected" : ""}>no effect</option>`,
+    `<option value="up" ${cur === "up" ? "selected" : ""}>▲ up one tier</option>`,
+    `<option value="down" ${cur === "down" ? "selected" : ""}>▼ down one tier</option>`,
+    ...state.tiers.map(x => `<option value="to:${x.id}" ${cur === "to:" + x.id ? "selected" : ""}>→ ${esc(x.name)}</option>`),
+  ].join("");
+  return `<div class="crea-editor" data-name="${t.name}">
+    <div class="ce-head">
+      <b>${t.name}</b>
+      <span class="r-lvl">lvl ${t.level}</span>
+      ${t.weight === 8 ? '<span class="r-w8" title="Reduced weighting: 8 instead of 10">w8</span>' : ""}
+      <span class="ce-detail">${detailLine(t)}</span>
+      ${chips}
+      <button class="blk ${blocked ? "on" : ""}" data-act="block" aria-pressed="${blocked}"
+        ${!blocked && state.blocked.length >= MAX_BLOCKS ? "disabled" : ""}
+        title="Blocks remove the creature from Mortimer's pool — ${BLOCK_COST} pts each, max ${MAX_BLOCKS}">
+        ${blocked ? "⛨ Blocked" : "⛨ Block"}
+      </button>
+      <button class="ce-close" data-act="close" title="Close">✕</button>
+    </div>
+    <div class="ce-grid">
+      <div class="rm-row rm-tier">
+        <span class="rm-name">Tier</span>
+        <select class="rm-sel" data-tiersel aria-label="Tier for ${t.name}">${tierOpts}</select>
+      </div>
+      ${creatureModDefs(t).map(d => {
+        const unlocked = !d.unlock || state.modUnlocked[d.unlock];
+        return `<div class="rm-row ${unlocked ? "" : "rm-off"}" data-modkey="${d.key}">
+          <span class="rm-name">${d.name} <small>${d.range}</small>${unlocked ? "" : ' <small class="rm-lock">locked</small>'}</span>
+          <select class="rm-sel" data-rulesel aria-label="${d.name} rule for ${t.name}" ${unlocked ? "" : "disabled"}>${ruleOpts(tr[d.key])}</select>
+        </div>`;
+      }).join("")}
+    </div>
   </div>`;
 }
 
-function renderRows(odds) {
-  const rows = TASKS.map(t => {
-    const label = labelOf(t.name);
-    const blocked = state.blocked.includes(t.name);
-    const tooHigh = t.level > state.level;
-    const noQuest = t.name === "Venators" && !state.venators;
-    const locked = tooHigh || noQuest;
-    const p = odds.appear[t.name];
-    const cls = ["row",
-      locked ? "locked" : "",
-      blocked ? "is-blocked" : label === "desired" ? "is-desired" : label === "bad" ? "is-bad" : "",
-    ].join(" ");
-    const offered = blocked ? "blocked"
-      : locked ? (tooHigh ? `lvl ${t.level}` : "quest")
-      : p !== undefined ? pct(p) : "—";
-    // chips: chance the rolled modifier changes this creature's verdict
-    let chips = "";
-    const slot = odds.slot[t.name];
-    if (slot && !blocked && !locked) {
-      const baseD = label === "desired" ? 1 : 0;
-      const baseB = label === "bad" ? 1 : 0;
-      const parts = [];
-      if (slot.dProb > 0 && baseD === 0)
-        parts.push(`<span class="chip chip-d" title="Chance its modifier promotes it to desired">✓${Math.round(slot.dProb * 100)}%</span>`);
-      if (baseB === 1 && slot.bProb < 1)
-        parts.push(`<span class="chip chip-b" title="Chance it stays bad after its modifier">✗${Math.round(slot.bProb * 100)}%</span>`);
-      if (parts.length) chips = `<div class="r-chips">${parts.join("")}</div>`;
-    }
-    return `
-    <div class="${cls}" data-name="${t.name}">
-      <div class="r-name">
-        <div class="r-title">
-          <b>${t.name}</b>
-          <span class="r-lvl">${t.level}</span>
-          ${t.weight === 8 ? '<span class="r-w8" title="Reduced weighting: 8 instead of 10">w8</span>' : ""}
+function renderTiers(odds) {
+  const byTier = {};
+  for (const t of TASKS) (byTier[state.placement[t.name]] = byTier[state.placement[t.name]] || []).push(t);
+  $("tiers").innerHTML = state.tiers.map((tier, i) => {
+    const members = byTier[tier.id] || [];
+    let s = `
+    <div class="tier cls-${tier.cls}" data-tier="${tier.id}">
+      <div class="tier-side">
+        <button class="tier-cls" data-tact="cls" title="Counts as ${tier.cls} in the odds — click to cycle">${CLS_ICON[tier.cls]}</button>
+        <input class="tier-name" value="${esc(tier.name)}" aria-label="Tier name" maxlength="24">
+        <div class="tier-tools">
+          <button data-tact="up" title="Move tier up" ${i === 0 ? "disabled" : ""}>↑</button>
+          <button data-tact="down" title="Move tier down" ${i === state.tiers.length - 1 ? "disabled" : ""}>↓</button>
+          <button data-tact="del" title="Delete tier (its creatures move to the default tier)" ${state.tiers.length <= 1 ? "disabled" : ""}>✕</button>
         </div>
-        <div class="r-detail">${detailLine(t)}</div>
       </div>
-      <div class="r-offered ${blocked || locked ? "na" : ""}">${offered}${chips}</div>
-      <div class="r-verdict">
-        <div class="tri" role="group" aria-label="Verdict for ${t.name}">
-          <button class="t-desired ${label === "desired" ? "on" : ""}" data-act="desired" aria-pressed="${label === "desired"}">✓ Desired</button>
-          <button class="t-neutral ${label === "neutral" ? "on" : ""}" data-act="neutral" aria-pressed="${label === "neutral"}">·</button>
-          <button class="t-bad ${label === "bad" ? "on" : ""}" data-act="bad" aria-pressed="${label === "bad"}">✗ Bad</button>
-        </div>
-        <button class="blk ${blocked ? "on" : ""}" data-act="block" aria-pressed="${blocked}"
-          ${!blocked && state.blocked.length >= MAX_BLOCKS ? "disabled" : ""}
-          title="Blocks remove the creature from Mortimer's pool — ${BLOCK_COST} pts each, max ${MAX_BLOCKS}">
-          ${blocked ? "⛨ Blocked" : "⛨"}
-        </button>
-        <button class="gear ${expanded.has(t.name) ? "open" : ""} ${state.taskRules[t.name] ? "set" : ""}"
-          data-act="mods" aria-expanded="${expanded.has(t.name)}"
-          title="${state.taskRules[t.name] ? "Modifier rules set · " : ""}which of this task's modifiers promote it">${expanded.has(t.name) ? "▾" : "▸"}</button>
-      </div>
-    </div>` + (expanded.has(t.name) ? editorHtml(t) : "");
-  });
-  $("rows").innerHTML = rows.join("");
+      <div class="tier-drop" data-drop="${tier.id}">${members.map(t => chipHtml(t, odds)).join("")}</div>
+    </div>`;
+    const sel = members.find(t => t.name === selectedName);
+    if (sel) s += drawerHtml(sel, odds);
+    return s;
+  }).join("");
 }
 
 function renderResults(o) {
   const { pDesired: pD, pAllBad: pB, pNeutral: pN, pool, k } = o;
-  const nDesired = pool.filter(t => labelOf(t.name) === "desired").length;
-  const nBad = pool.filter(t => labelOf(t.name) === "bad").length;
+  const nDesired = pool.filter(t => classOf(t.name) === "desired").length;
+  const nBad = pool.filter(t => classOf(t.name) === "bad").length;
   const nNeutral = pool.length - nDesired - nBad;
-
   const rulesActive = Object.keys(state.taskRules).length > 0;
+
   $("hero-num").textContent = (nDesired || pD > 0) ? pct(pD) : "—";
   $("hero-foot").textContent = (nDesired || pD > 0)
     ? `${nDesired} desired of ${pool.length} in pool · ${k} offered per roll${rulesActive ? " · Mortifier rules applied" : ""}`
-    : `label some creatures “✓ Desired” to see your odds · ${pool.length} in pool`;
+    : `drag creatures into a ✓ tier to see your odds · ${pool.length} in pool`;
 
   // stacked outcome bar (2px gaps come from the flex gap)
   const segs = [
@@ -212,7 +305,7 @@ function renderResults(o) {
     .join("");
 
   const st = MortimerMath.strategyStats(o, SKIP_COST);
-  $("t-allbad").textContent = nBad ? pct(pB) : "0%";
+  $("t-allbad").textContent = pB > 0 ? pct(pB) : "0%";
   $("t-rolls").textContent = pD > 0 ? st.offersPerDesired.toFixed(1) : "—";
   $("t-skipcost").textContent = pD > 0 ? Math.round(st.skipUntilDesiredCost) + " pts" : "—";
   $("t-patient").textContent = (pD + pN) > 0 ? pct0(st.patientDesiredShare) : "—";
@@ -221,7 +314,7 @@ function renderResults(o) {
   const skipsPerTask = st.patientSkipsPerTask;
   $("fine").innerHTML = [
     `<b>${nDesired}</b> desired · <b>${nNeutral}</b> neutral · <b>${nBad}</b> bad · <b>${state.blocked.length}</b>/${MAX_BLOCKS} blocked${blockSpend ? ` (${blockSpend} pts)` : ""}.`,
-    nBad ? `Skipping only all-bad offers costs ≈ <b>${Number.isFinite(skipsPerTask) ? Math.round(skipsPerTask * SKIP_COST) : "∞"} pts</b> per completed task (${(skipsPerTask * 100).toFixed(1)} skips per 100 tasks).` : "",
+    pB > 0 ? `Skipping only all-bad offers costs ≈ <b>${Number.isFinite(skipsPerTask) ? Math.round(skipsPerTask * SKIP_COST) : "∞"} pts</b> per completed task (${(skipsPerTask * 100).toFixed(1)} skips per 100 tasks).` : "",
     `Each offer roll is independent; “offers per desired task” is the mean of a geometric distribution, 1∕p.`,
   ].filter(Boolean).join(" ");
 }
@@ -242,61 +335,140 @@ function renderControls() {
 }
 
 function refresh() {
+  ensurePlacements();
   const odds = computeOdds();
-  renderRows(odds);
+  renderTiers(odds);
   renderResults(odds);
   renderControls();
   save();
 }
 
-// ————— events —————
+// ————— tier board events —————
 
-const toggleExpand = name => {
-  if (expanded.has(name)) expanded.delete(name);
-  else expanded.add(name);
+const tiersEl = $("tiers");
+
+tiersEl.addEventListener("dragstart", e => {
+  const chip = e.target.closest(".crea");
+  if (!chip) return;
+  dragName = chip.dataset.name;
+  e.dataTransfer.effectAllowed = "move";
+  e.dataTransfer.setData("text/plain", dragName);
+  chip.classList.add("dragging");
+});
+
+tiersEl.addEventListener("dragend", () => {
+  dragName = null;
+  document.querySelectorAll(".drag-over, .dragging").forEach(x => x.classList.remove("drag-over", "dragging"));
+});
+
+tiersEl.addEventListener("dragover", e => {
+  const zone = e.target.closest(".tier-drop");
+  if (!zone) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = "move";
+  zone.classList.add("drag-over");
+});
+
+tiersEl.addEventListener("dragleave", e => {
+  const zone = e.target.closest(".tier-drop");
+  if (zone && !zone.contains(e.relatedTarget)) zone.classList.remove("drag-over");
+});
+
+tiersEl.addEventListener("drop", e => {
+  const zone = e.target.closest(".tier-drop");
+  if (!zone) return;
+  e.preventDefault();
+  const name = dragName || e.dataTransfer.getData("text/plain");
+  dragName = null;
+  if (!name || !zone.dataset.drop) return;
+  state.placement[name] = zone.dataset.drop;
   refresh();
-};
+});
 
-$("rows").addEventListener("click", e => {
-  const holder = e.target.closest("[data-name]");
-  if (!holder) return;
-  const name = holder.dataset.name;
-  const btn = e.target.closest("button");
-  if (!btn) {
-    // anywhere on the row that isn't a control toggles the mod editor
-    if (holder.classList.contains("row")) toggleExpand(name);
+// chip selection + drawer controls
+tiersEl.addEventListener("click", e => {
+  const editor = e.target.closest(".crea-editor");
+  if (editor) {
+    const btn = e.target.closest("button");
+    if (!btn) return;
+    const name = editor.dataset.name;
+    if (btn.dataset.act === "block") {
+      if (state.blocked.includes(name)) state.blocked = state.blocked.filter(n => n !== name);
+      else if (state.blocked.length < MAX_BLOCKS) state.blocked.push(name);
+      refresh();
+    } else if (btn.dataset.act === "close") {
+      selectedName = null;
+      refresh();
+    }
     return;
   }
-  if (btn.dataset.rule && holder.classList.contains("mods-editor")) {
-    const key = btn.closest(".rm-row").dataset.modkey;
-    const tr = state.taskRules[name] || (state.taskRules[name] = {});
-    if (btn.dataset.rule === "none") delete tr[key];
-    else tr[key] = btn.dataset.rule;
-    if (!Object.keys(tr).length) delete state.taskRules[name];
+  const chip = e.target.closest(".crea");
+  if (chip) {
+    selectedName = selectedName === chip.dataset.name ? null : chip.dataset.name;
     refresh();
     return;
   }
-  const act = btn.dataset.act;
-  if (act === "mods") {
-    toggleExpand(name);
-  } else if (act === "block") {
-    if (state.blocked.includes(name)) state.blocked = state.blocked.filter(n => n !== name);
-    else if (state.blocked.length < MAX_BLOCKS) state.blocked.push(name);
-  } else if (act === "desired" || act === "bad") {
-    state.labels[name] = labelOf(name) === act ? undefined : act;
-    if (!state.labels[name]) delete state.labels[name];
-  } else if (act === "neutral") {
-    delete state.labels[name];
-  }
+  // tier management
+  const btn = e.target.closest("button");
+  if (!btn) return;
+  const row = e.target.closest(".tier");
+  const idx = state.tiers.findIndex(t => t.id === row?.dataset.tier);
+  if (idx === -1) return;
+  const act = btn.dataset.tact;
+  if (act === "cls") {
+    const t = state.tiers[idx];
+    t.cls = CLS_ORDER[(CLS_ORDER.indexOf(t.cls) + 1) % CLS_ORDER.length];
+  } else if (act === "up" && idx > 0) {
+    [state.tiers[idx - 1], state.tiers[idx]] = [state.tiers[idx], state.tiers[idx - 1]];
+  } else if (act === "down" && idx < state.tiers.length - 1) {
+    [state.tiers[idx + 1], state.tiers[idx]] = [state.tiers[idx], state.tiers[idx + 1]];
+  } else if (act === "del" && state.tiers.length > 1) {
+    const deadId = state.tiers[idx].id;
+    state.tiers.splice(idx, 1);
+    const def = defaultTierId();
+    for (const [n, tid] of Object.entries(state.placement)) if (tid === deadId) state.placement[n] = def;
+    for (const [n, rules] of Object.entries(state.taskRules)) {
+      for (const [k, v] of Object.entries(rules)) if (v === "to:" + deadId) delete rules[k];
+      if (!Object.keys(rules).length) delete state.taskRules[n];
+    }
+  } else return;
   refresh();
 });
 
-$("unlock-seg").addEventListener("click", e => {
-  const b = e.target.closest("button[data-unlock]");
-  if (!b) return;
-  state.modUnlocked[b.dataset.unlock] = !state.modUnlocked[b.dataset.unlock];
+tiersEl.addEventListener("change", e => {
+  const editor = e.target.closest(".crea-editor");
+  if (editor) {
+    const name = editor.dataset.name;
+    if (e.target.hasAttribute("data-tiersel")) {
+      state.placement[name] = e.target.value;
+      refresh();
+      return;
+    }
+    if (e.target.hasAttribute("data-rulesel")) {
+      const key = e.target.closest(".rm-row").dataset.modkey;
+      const tr = state.taskRules[name] || (state.taskRules[name] = {});
+      if (e.target.value === "none") delete tr[key];
+      else tr[key] = e.target.value;
+      if (!Object.keys(tr).length) delete state.taskRules[name];
+      refresh();
+    }
+    return;
+  }
+  const inp = e.target.closest(".tier-name");
+  if (!inp || inp.tagName !== "INPUT") return;
+  const t = state.tiers.find(x => x.id === e.target.closest(".tier")?.dataset.tier);
+  if (!t) return;
+  t.name = inp.value.trim() || t.name;
   refresh();
 });
+
+$("add-tier").addEventListener("click", () => {
+  state.tierSeq = Math.max(state.tierSeq || 0, state.tiers.length) + 1;
+  state.tiers.push({ id: "t" + state.tierSeq, name: "Tier " + (state.tiers.length + 1), cls: "neutral" });
+  refresh();
+});
+
+// ————— control events —————
 
 $("level").addEventListener("change", e => {
   state.level = Math.max(1, Math.min(99, Number(e.target.value) || 99));
@@ -315,11 +487,20 @@ $("venators").addEventListener("click", () => {
   refresh();
 });
 
+$("unlock-seg").addEventListener("click", e => {
+  const b = e.target.closest("button[data-unlock]");
+  if (!b) return;
+  state.modUnlocked[b.dataset.unlock] = !state.modUnlocked[b.dataset.unlock];
+  refresh();
+});
+
 $("reset").addEventListener("click", () => {
-  state.labels = {};
   state.blocked = [];
   state.taskRules = {};
-  expanded.clear();
+  state.placement = {};
+  state.tiers = defaultTiers();
+  state.tierSeq = 3;
+  selectedName = null;
   refresh();
 });
 

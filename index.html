@@ -48,13 +48,13 @@
 </section>
 
 <main class="layout">
-  <section class="ledger" aria-label="Task pool">
-    <div class="ledger-head">
-      <span class="lh-creature">Creature</span>
-      <span class="lh-offered" title="Chance this creature appears among the tasks offered">Offered</span>
-      <span class="lh-verdict">Your verdict</span>
+  <section class="tierboard" aria-label="Tier board">
+    <div class="tb-head">
+      <h2>The Tier Board</h2>
+      <p>Drag creatures between tiers; click one to set its modifier rules and blocks. Each tier counts as <span class="tb-d">✓ desired</span>, <span class="tb-n">· neutral</span>, or <span class="tb-b">✗ bad</span> toward the odds — click the mark to change it.</p>
+      <button id="add-tier" class="ghost">+ Add tier</button>
     </div>
-    <div id="rows"></div>
+    <div id="tiers"></div>
   </section>
 
   <aside class="results" aria-label="Odds">

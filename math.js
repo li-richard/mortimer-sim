@@ -17,36 +17,33 @@
 (function (global) {
   "use strict";
 
-  /* ————— modifier promotion ————— */
+  /* ————— tier resolution ————— */
 
-  const TIER_UP = { bad: "neutral", neutral: "desired", desired: "desired" };
-
-  /* rule: "none" | "tier" (+1 tier) | "neutral" (floor at neutral) |
-   * "desired" (always desired). Rules only ever promote, never demote. */
-  function promote(label, rule) {
-    switch (rule) {
-      case "tier": return TIER_UP[label];
-      case "neutral": return label === "bad" ? "neutral" : label;
-      case "desired": return "desired";
-      default: return label;
-    }
+  /* Tiers are an ordered list, index 0 = best. A modifier rule moves a
+   * task within it: "up" / "down" shift one tier (clamped at the ends),
+   * a number jumps to that tier index (clamped), "none" stays put.
+   * baseIdx === null means unranked — relative moves have nowhere to
+   * start from and leave it unranked; absolute jumps still apply. */
+  function resolveTier(baseIdx, rule, tierCount) {
+    if (typeof rule === "number") return Math.max(0, Math.min(tierCount - 1, rule));
+    if (baseIdx === null || baseIdx === undefined) return null;
+    if (rule === "up") return Math.max(0, baseIdx - 1);
+    if (rule === "down") return Math.min(tierCount - 1, baseIdx + 1);
+    return baseIdx;
   }
 
-  /* Effective per-slot outcome distribution for one creature: its base
-   * verdict, promoted by whichever modifier lands on it. `rules` holds
-   * one promotion rule per applicable unlocked modifier type (each
-   * equally likely). Empty/absent rules = plain base verdict. */
-  function slotProbs(label, rules) {
-    if (!rules || rules.length === 0) {
-      return { dProb: label === "desired" ? 1 : 0, bProb: label === "bad" ? 1 : 0 };
-    }
+  /* Effective per-slot outcome distribution for one creature: `classes`
+   * holds the outcome class ("desired" | "neutral" | "bad") the task
+   * ends up as under each of its applicable modifiers, one entry per
+   * modifier, each equally likely to roll. */
+  function slotProbs(classes) {
+    if (!classes || classes.length === 0) return { dProb: 0, bProb: 0 };
     let d = 0, b = 0;
-    for (const r of rules) {
-      const eff = promote(label, r);
-      if (eff === "desired") d++;
-      else if (eff === "bad") b++;
+    for (const c of classes) {
+      if (c === "desired") d++;
+      else if (c === "bad") b++;
     }
-    return { dProb: d / rules.length, bProb: b / rules.length };
+    return { dProb: d / classes.length, bProb: b / classes.length };
   }
 
   /* ————— offer-set odds ————— */
@@ -118,7 +115,7 @@
     };
   }
 
-  const api = { computeOdds, strategyStats, promote, slotProbs };
+  const api = { computeOdds, strategyStats, resolveTier, slotProbs };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.MortimerMath = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);
