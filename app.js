@@ -51,12 +51,23 @@ const state = {
   taskRules: {},
   // the tier the hero number measures
   focusTier: "t1",
+  // which master the comparison panel runs against
+  master: "duradel",
+  // per-master block lists — block slots are per master, not shared
+  // (Turael/Aya/Spria are the only ones that share a list)
+  masterBlocks: { duradel: [], konar: [], nieve: [] },
+  // account-wide number of block slots: 1 per 50 quest points to 300, +1 for
+  // the Elite Lumbridge & Draynor Diary
+  blockSlots: 7,
 };
+
+const MAX_BLOCK_SLOTS = 7;
 
 // UI-only state, not persisted
 let selectedName = null;
 let dragName = null;
 let dragTier = null;
+let blocksOpen = false;
 
 // ————— persistence + migration —————
 
@@ -467,6 +478,106 @@ function renderResults(o) {
         : `Every offer already contains “${esc(focusName)}” or better — no skipping needed.`,
     `Each offer roll is independent; “offers until one appears” is the mean of a geometric distribution, 1∕p.`,
   ].filter(Boolean).join(" ");
+
+  renderVersus(fIdx, pOrBetter);
+}
+
+/* ————— comparison masters + Turael skipping —————
+ *
+ * A regular master hands out one weighted task per roll and has no
+ * modifiers, so a creature counts only by where it sits on the board.
+ * Anything outside Mortimer's pool (Ankou, Cave Kraken, …) can't be
+ * tiered, so it misses. Blocked tasks leave the pool entirely, which is
+ * how the game's own weight formula treats them.
+ */
+const masterBlocksOf = key => (state.masterBlocks[key] = state.masterBlocks[key] || []);
+
+function masterEligible(key) {
+  const blocked = new Set(masterBlocksOf(key));
+  return MASTERS[key].tasks.filter(d =>
+    d.level <= state.level && !d.needsUnlock && !blocked.has(d.task));
+}
+
+function masterOdds(key, fIdx) {
+  const eligible = masterEligible(key);
+  const totalW = eligible.reduce((s, d) => s + d.weight, 0);
+  const hitW = eligible.reduce((s, d) => {
+    const i = d.creature ? tierIndexOf(d.creature) : null;
+    return s + (i !== null && i <= fIdx ? d.weight : 0);
+  }, 0);
+  return {
+    pool: eligible.length,
+    total: MASTERS[key].tasks.length,
+    p: totalW ? hitW / totalW : 0,
+  };
+}
+
+function renderVersus(fIdx, pMortimer) {
+  if (!MASTERS[state.master]) state.master = "duradel";
+  const key = state.master;
+  const m = MASTERS[key];
+  const d = masterOdds(key, fIdx);
+  const focusName = state.tiers[fIdx].name;
+
+  $("master-sel").innerHTML = selectHtml("master", key,
+    Object.entries(MASTERS).map(([k, v]) => ({ val: k, label: v.label })),
+    "Master to compare against", false);
+
+  const row = (label, p, costHtml, cls) => `<tr class="${cls}">
+      <th>${esc(label)}</th>
+      <td>${p > 0 ? pct(p) : "0%"}</td>
+      <td>${p > 0 ? (1 / p).toFixed(1) : "—"}</td>
+      <td>${p > 0 ? costHtml(1 / p - 1) : "never"}</td>
+    </tr>`;
+  $("vs-body").innerHTML =
+    row(m.label, d.p, n => `${n.toFixed(1)} filler tasks<br><small>+ streak reset each</small>`, "vs-other") +
+    row("Mortimer", pMortimer, n => `${Math.round(n * SKIP_COST).toLocaleString()} pts<br><small>${n.toFixed(1)} skips</small>`, "vs-mort");
+
+  const used = masterBlocksOf(key).length;
+  const btn = $("vs-blocks-btn");
+  btn.textContent = `${blocksOpen ? "▾" : "▸"} ${esc(m.label)} blocks — ${used}/${state.blockSlots} used`;
+  btn.setAttribute("aria-expanded", String(blocksOpen));
+  renderMasterBlocks(key, fIdx);
+
+  const ratio = d.p > 0 && pMortimer > 0 ? pMortimer / d.p : null;
+  $("vs-note").innerHTML = [
+    ratio
+      ? `Mortimer lands “${esc(focusName)}”-or-better <b>${ratio.toFixed(1)}×</b> as often per roll.`
+      : d.p === 0 && pMortimer > 0
+        ? `${esc(m.label)} can never assign this tier — only Mortimer reaches it.`
+        : "",
+    `Pool: ${d.pool} of ${d.total} tasks (rest are blocked, above your Slayer level, or need a points unlock). Tasks outside Mortimer's pool can't be tiered, so they count as misses.`,
+  ].filter(Boolean).join(" ");
+}
+
+function renderMasterBlocks(key, fIdx) {
+  const el = $("vs-blocks");
+  el.hidden = !blocksOpen;
+  if (!blocksOpen) { el.innerHTML = ""; return; }
+  const blocked = new Set(masterBlocksOf(key));
+  const full = blocked.size >= state.blockSlots;
+  const rows = MASTERS[key].tasks
+    .filter(t => t.level <= state.level && !t.needsUnlock)
+    .map(t => {
+      const i = t.creature ? tierIndexOf(t.creature) : null;
+      const on = blocked.has(t.task);
+      const hit = i !== null && i <= fIdx;
+      return { t, on, hit, tier: i === null ? null : state.tiers[i].name };
+    })
+    .sort((a, b) => b.t.weight - a.t.weight || a.t.task.localeCompare(b.t.task));
+  el.innerHTML = `
+    <div class="vb-slots">
+      <span>Block slots</span>
+      <input type="number" id="vb-slots" min="0" max="${MAX_BLOCK_SLOTS}" step="1" value="${state.blockSlots}"
+        title="1 per 50 quest points up to 300, +1 for the Elite Lumbridge &amp; Draynor Diary">
+    </div>
+    <ul class="vb-list">${rows.map(r => `
+      <li class="${r.on ? "on" : ""} ${r.hit ? "hit" : ""}">
+        <button type="button" data-block="${esc(r.t.task)}" ${!r.on && full ? "disabled" : ""}
+          title="${r.on ? "Unblock" : full ? "No block slots left" : "Block this task"}">${r.on ? "⛨" : "○"}</button>
+        <span class="vb-name">${esc(r.t.task)}${r.tier ? `<small>${esc(r.tier)}</small>` : ""}</span>
+        <span class="vb-w">${r.t.weight}</span>
+      </li>`).join("")}</ul>`;
 }
 
 function renderControls() {
@@ -859,6 +970,7 @@ window.addEventListener("resize", positionPopover);
 function resetLedger() {
   state.tasksDone = 100;
   state.blocked = [];
+  state.masterBlocks = { duradel: [], konar: [], nieve: [] };
   state.taskRules = {};
   state.placement = {};
   state.tierOrder = {};
@@ -872,9 +984,14 @@ function resetLedger() {
 /* ——— share codes ——— */
 
 const NAMES = TASKS.map(t => t.name);
+const MASTER_TASK_NAMES = Object.fromEntries(
+  Object.entries(MASTERS).map(([k, v]) => [k, v.tasks.map(t => t.task)]));
 
 function currentShareCode() {
   return MortimerShare.encode({
+    master: state.master,
+    blockSlots: state.blockSlots,
+    masterBlocks: state.masterBlocks,
     level: state.level,
     tasksDone: state.tasksDone,
     venators: state.venators,
@@ -889,7 +1006,7 @@ function currentShareCode() {
         return i === -1 ? [k, null] : [k, i + 1];
       }).filter(([, v]) => v !== null)),
     ])),
-  }, NAMES);
+  }, NAMES, MASTER_TASK_NAMES);
 }
 
 function applyBoard(board) {
@@ -907,6 +1024,12 @@ function applyBoard(board) {
   state.venators = board.venators;
   state.blocked = board.blocked.slice(0, MAX_BLOCKS);
   state.focusTier = (state.tiers[board.focusRank - 1] || state.tiers[0]).id;
+  if (board.master && MASTERS[board.master]) state.master = board.master;
+  if (board.blockSlots !== null && board.blockSlots !== undefined) state.blockSlots = board.blockSlots;
+  state.masterBlocks = { duradel: [], konar: [], nieve: [] };
+  for (const [k, list] of Object.entries(board.masterBlocks || {})) {
+    if (MASTERS[k]) state.masterBlocks[k] = list.slice(0, state.blockSlots);
+  }
   state.taskRules = {};
   for (const [name, r] of Object.entries(board.rules)) {
     const out = {};
@@ -934,7 +1057,7 @@ function pasteShareCode() {
   const input = prompt("Paste a share code or link:");
   if (input === null) return;
   try {
-    applyBoard(MortimerShare.decode(input, NAMES));
+    applyBoard(MortimerShare.decode(input, NAMES, MASTER_TASK_NAMES));
     flash("Board loaded from share code");
   } catch (err) {
     alert("Couldn't read that code: " + err.message);
@@ -1042,12 +1165,58 @@ $("focus-tier").addEventListener("change", e => {
   refresh();
 });
 
+// ————— comparison panel —————
+
+$("vs-blocks-btn").addEventListener("click", () => {
+  blocksOpen = !blocksOpen;
+  refresh();
+});
+
+$("versus").addEventListener("click", e => {
+  // master picker (a listbox like the creature card's)
+  const opt = e.target.closest("#master-sel li[role=option]");
+  if (opt) {
+    state.master = opt.dataset.val;
+    refresh();
+    return;
+  }
+  const selBtn = e.target.closest("#master-sel .sel-btn");
+  if (selBtn) {
+    const sel = selBtn.closest(".sel");
+    const menu = sel.querySelector(".sel-menu");
+    const open = !menu.hidden;
+    menu.hidden = open;
+    sel.classList.toggle("open", !open);
+    selBtn.setAttribute("aria-expanded", String(!open));
+    return;
+  }
+  const blk = e.target.closest("button[data-block]");
+  if (blk) {
+    const task = blk.dataset.block;
+    const list = masterBlocksOf(state.master);
+    const i = list.indexOf(task);
+    if (i !== -1) list.splice(i, 1);
+    else if (list.length < state.blockSlots) list.push(task);
+    refresh();
+  }
+});
+
+$("versus").addEventListener("change", e => {
+  if (e.target.id !== "vb-slots") return;
+  state.blockSlots = Math.max(0, Math.min(MAX_BLOCK_SLOTS, Number(e.target.value) || 0));
+  // trim any lists that no longer fit
+  for (const k of Object.keys(state.masterBlocks)) {
+    state.masterBlocks[k] = masterBlocksOf(k).slice(0, state.blockSlots);
+  }
+  refresh();
+});
+
 load();
 
 // a board can arrive in the URL: …/#c=<code>
 if (location.hash.startsWith("#c=")) {
   try {
-    applyBoard(MortimerShare.decode(location.hash, NAMES));
+    applyBoard(MortimerShare.decode(location.hash, NAMES, MASTER_TASK_NAMES));
     history.replaceState(null, "", location.pathname + location.search);
   } catch (e) { /* not ours — keep the saved board */ }
 }

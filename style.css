@@ -567,6 +567,95 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 }
 .fine b { color: var(--ink-2); font-weight: 500; }
 
+/* ————— versus panel ————— */
+
+.versus {
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--hairline);
+}
+.versus h3 {
+  font-family: var(--serif-display); font-weight: 400;
+  font-size: 14px; letter-spacing: 0.1em;
+  color: var(--gold); margin: 0 0 8px;
+}
+.vs-table {
+  width: 100%; border-collapse: collapse;
+  font-size: 12px; font-variant-numeric: tabular-nums;
+}
+.vs-table thead th {
+  font-family: var(--body); font-weight: 400; font-size: 10.5px;
+  letter-spacing: 0.06em; color: var(--ink-3);
+  text-align: right; padding: 0 0 4px; border-bottom: 1px solid var(--hairline-faint);
+}
+.vs-table thead th:first-child { text-align: left; }
+.vs-table tbody th {
+  text-align: left; font-weight: 500; color: var(--ink);
+  padding: 7px 6px 7px 0; font-size: 13px;
+}
+.vs-table td {
+  text-align: right; padding: 7px 0 7px 8px;
+  color: var(--ink-2); vertical-align: top;
+}
+.vs-table td small { color: var(--ink-3); font-size: 10.5px; }
+.vs-table tbody tr + tr th, .vs-table tbody tr + tr td { border-top: 1px solid var(--hairline-faint); }
+.vs-mort th { color: var(--gold); }
+.vs-note {
+  margin: 9px 0 0; font-size: 11.5px; color: var(--ink-3); line-height: 1.5;
+}
+.vs-note b { color: var(--gold); }
+
+.vs-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.vs-head h3 { margin: 0; }
+#master-sel .sel { width: auto; }
+#master-sel .sel-btn { padding: 4px 8px; font-size: 12px; gap: 6px; }
+#master-sel .sel-menu { width: max-content; min-width: 150px; left: auto; right: 0; }
+#master-sel .sel-menu li { font-size: 12.5px; }
+
+.vs-blocks-btn {
+  appearance: none; cursor: pointer; width: 100%; text-align: left;
+  background: transparent; border: none; border-top: 1px solid var(--hairline-faint);
+  color: var(--ink-3); font-family: var(--body); font-size: 11.5px;
+  padding: 8px 0 0; margin-top: 8px;
+}
+.vs-blocks-btn:hover { color: var(--gold); }
+
+.vs-blocks { margin-top: 7px; }
+.vb-slots {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 11.5px; color: var(--ink-3); margin-bottom: 5px;
+}
+.vb-slots input {
+  width: 48px; height: 24px; padding: 0 6px;
+  background: var(--panel); color: var(--ink);
+  border: 1px solid var(--hairline-faint); border-radius: 3px;
+  font-family: var(--body); font-size: 12px;
+}
+.vb-list {
+  list-style: none; margin: 0; padding: 0;
+  max-height: 210px; overflow-y: auto;
+  border: 1px solid var(--hairline-faint); border-radius: 3px;
+}
+.vb-list li {
+  display: flex; align-items: center; gap: 7px;
+  padding: 3px 6px; font-size: 12px;
+  border-bottom: 1px solid rgba(211,167,85,0.06);
+}
+.vb-list li:last-child { border-bottom: none; }
+.vb-list li.on { background: rgba(208,59,59,0.10); }
+.vb-list li.hit .vb-name { color: var(--desired-ink); }
+.vb-list button {
+  appearance: none; cursor: pointer; flex: none;
+  width: 20px; height: 20px; padding: 0; line-height: 1;
+  background: transparent; border: 1px solid var(--hairline-faint); border-radius: 2px;
+  color: var(--ink-3); font-size: 10px; font-family: var(--body);
+}
+.vb-list button:hover:not(:disabled) { color: var(--bad-ink); border-color: rgba(208,59,59,0.4); }
+.vb-list li.on button { color: var(--bad-ink); border-color: rgba(208,59,59,0.45); }
+.vb-list button:disabled { opacity: 0.3; cursor: not-allowed; }
+.vb-name { flex: 1; min-width: 0; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.vb-name small { color: var(--ink-3); font-size: 10px; margin-left: 5px; }
+.vb-w { color: var(--ink-3); font-variant-numeric: tabular-nums; font-size: 11px; }
+
 .colophon {
   max-width: 1440px; margin: 26px auto 40px; padding: 0 20px;
   text-align: center; font-size: 12.5px; color: var(--ink-3);

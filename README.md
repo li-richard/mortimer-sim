@@ -21,6 +21,24 @@ An interactive, dependency-free static site ([index.html](index.html), [app.js](
 
 The math lives in [math.js](math.js) (shared between the browser and node) and enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. The whole board persists in `localStorage`.
 
+### vs Turael skipping
+
+The results card compares Mortimer against the current meta — take a Duradel task, and if it isn't the one you want, get a quick task from Turael to reroll. Both sides are measured the same way: **the chance one roll lands in your focused tier or better**, and how many rolls that implies (1∕p).
+
+What differs is the currency. Mortimer charges **100 points per skip**; Turael skipping costs **no points but resets your task streak** every time, plus the filler task itself. The panel quotes each in its own terms rather than pretending they're interchangeable.
+
+Pick the master to compare against — **Duradel** (42 tasks), **Konar quo Maten** (39, the only source of Hydras) or **Nieve / Steve** (46). Their weights come from the OSRS Wiki's `/Slayer_assignments` tables ([data/master_tasks.csv](data/master_tasks.csv) → `masters.js`).
+
+**Block lists are per master**, matching the game — each master keeps its own list, and only Turael/Aya/Spria share one. Expand the block editor to toggle any of that master's tasks, including ones outside Mortimer's pool (blocking Ankou or Hellhounds is a real part of the meta). The slot count is account-wide: one per 50 quest points up to 300, plus one for the Elite Lumbridge & Draynor Diary, so **7 max** — set yours in the editor. Mortimer's own two 120-point slots are separate, set with the ⛨ toggle on a creature card.
+
+Modelling notes:
+
+- These masters have **no modifiers**, so a creature counts only by where it sits on the board — no promotions.
+- Blocked tasks leave the pool entirely, which is how the game's own task-weight formula treats them.
+- Tasks needing a Rewards Shop unlock (TzHaar, boss tasks, …) are **excluded**, since Mortimer grants his equivalents for free. Tasks above your Slayer level are excluded too.
+- **Only 16–19 of each master's tasks overlap Mortimer's pool.** The rest (Ankou, Cave Kraken, Hellhounds, …) can't be tiered, so they count as misses — the honest reading of a board that says which creatures you want.
+- Combat level is not modelled; these masters already require high Combat.
+
 ### Share codes
 
 **Copy share code** puts the whole board — tiers and their order, every creature's placement, modifier rules, blocks, Slayer level, tasks completed, Venators and the focused tier — into one url-safe string (~150 characters for a full board). **Paste share code** accepts the bare code, a `#c=…` fragment, or a full URL containing one. Opening `…/index.html#c=<code>` loads that board directly and then cleans the URL, so a code doubles as a share link.

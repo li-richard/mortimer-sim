@@ -1,0 +1,128 @@
+master,task,weight,slayer_level,combat_level,needs_unlock,mortimer_creature
+duradel,Aberrant Spectres,7,60,65,no,Aberrant Spectres
+duradel,Abyssal Demons,12,85,85,no,Abyssal Demons
+duradel,Ankou,5,1,40,no,
+duradel,Aquanites,5,78,1,yes,Aquanites
+duradel,Araxytes,10,92,1,no,Araxytes
+duradel,Aviansie,8,1,1,yes,
+duradel,Basilisks,7,40,1,yes,Basilisks
+duradel,Black Demons,8,1,80,no,
+duradel,Black Dragons,9,77,80,no,
+duradel,Bloodveld,8,50,50,no,Bloodveld
+duradel,Blue Dragons,4,1,65,no,
+duradel,Cave Horrors,4,58,85,no,Cave Horrors
+duradel,Cave Kraken,9,87,80,no,
+duradel,Combat Achievements,12,1,1,yes,
+duradel,Dagannoth,9,1,75,no,
+duradel,Dark Beasts,11,90,90,no,Dark Beasts
+duradel,Drakes,8,84,1,no,Drakes
+duradel,Dust Devils,5,65,70,no,Dust Devils
+duradel,Elves,4,1,70,no,
+duradel,Fire Giants,7,1,65,no,
+duradel,Fossil Island Wyverns,7,66,60,no,
+duradel,Gargoyles,8,75,80,no,Gargoyles
+duradel,Greater Demons,9,1,75,no,
+duradel,Gryphons,7,51,1,yes,Gryphons
+duradel,Hellhounds,10,91,75,no,
+duradel,Kalphite,9,1,15,no,
+duradel,Kurask,4,70,65,no,Kurask
+duradel,Lizardmen,10,1,1,yes,
+duradel,Metal Dragons,14,1,1,no,
+duradel,Mutated Zygomites,2,57,60,no,
+duradel,Nechryael,9,80,85,no,Nechryael
+duradel,Red Dragons,8,1,68,yes,
+duradel,Skeletal Wyvern,7,72,70,no,
+duradel,Smoke Devils,9,93,85,no,Smoke Devils
+duradel,Spiritual Creatures,7,63,60,no,
+duradel,Suqahs,8,1,85,no,
+duradel,Trolls,6,1,60,no,
+duradel,TzHaar,10,1,1,yes,
+duradel,Vampyres,8,1,1,yes,
+duradel,Warped creatures,8,1,1,yes,Warped Creatures
+duradel,Waterfiends,2,1,75,no,
+duradel,Wyrms,8,62,1,no,Wyrms
+konar,Aberrant spectres,6,60,65,no,Aberrant Spectres
+konar,Abyssal demons,9,85,85,no,Abyssal Demons
+konar,Ankou,5,1,40,no,
+konar,Aviansie,6,1,1,yes,
+konar,Basilisks,5,40,1,yes,Basilisks
+konar,Black demons,9,1,80,no,
+konar,Black dragons,6,77,80,no,
+konar,Bloodveld,9,50,50,no,Bloodveld
+konar,Blue dragons,4,1,65,no,
+konar,Bosses,8,1,1,yes,
+konar,Brine rats,2,47,45,no,
+konar,Cave kraken,9,87,80,no,
+konar,Dagannoth,8,1,75,no,
+konar,Dark beasts,5,90,90,no,Dark Beasts
+konar,Drakes,10,84,1,no,Drakes
+konar,Dust devils,6,65,70,no,Dust Devils
+konar,Fire giants,9,1,65,no,
+konar,Fossil Island Wyverns,5,66,60,no,
+konar,Gargoyles,6,75,80,no,Gargoyles
+konar,Greater demons,7,1,75,no,
+konar,Hellhounds,8,1,75,no,
+konar,Hydras,10,95,1,no,Hydras
+konar,Jellies,6,52,57,no,Jellies
+konar,Kalphite,9,1,15,no,
+konar,Kurask,3,70,65,no,Kurask
+konar,Lesser Nagua,2,48,1,no,
+konar,Lizardmen,8,1,1,no,
+konar,Metal dragons,15,1,1,no,
+konar,Mutated Zygomites,2,57,60,no,
+konar,Nechryael,7,80,85,no,Nechryael
+konar,Red dragons,5,1,68,yes,
+konar,Skeletal Wyverns,5,72,70,no,
+konar,Smoke devils,7,93,85,no,Smoke Devils
+konar,Trolls,6,1,60,no,
+konar,Turoth,3,55,60,no,Turoth
+konar,Vampyres,4,1,1,no,
+konar,Warped creatures,4,1,1,yes,Warped Creatures
+konar,Waterfiends,2,1,75,no,
+konar,Wyrms,10,62,1,no,Wyrms
+nieve,Aberrant spectres,6,60,65,no,Aberrant Spectres
+nieve,Abyssal demons,9,85,85,no,Abyssal Demons
+nieve,Ankou,5,1,40,no,
+nieve,Aquanites,5,78,1,yes,Aquanites
+nieve,Araxytes,8,92,1,no,Araxytes
+nieve,Aviansie,6,1,1,yes,
+nieve,Basilisks,6,40,1,yes,Basilisks
+nieve,Black demons,9,1,80,no,
+nieve,Black dragons,6,77,80,no,
+nieve,Bloodveld,9,50,50,no,Bloodveld
+nieve,Blue dragons,4,1,65,no,
+nieve,Boss,8,1,1,yes,
+nieve,Brine rats,3,47,45,no,
+nieve,Cave horrors,5,58,85,no,Cave Horrors
+nieve,Cave kraken,6,87,80,no,
+nieve,Custodian stalker,8,54,1,no,Custodian Stalkers
+nieve,Dagannoth,8,1,75,no,
+nieve,Dark beasts,5,90,90,no,Dark Beasts
+nieve,Drakes,7,84,1,no,Drakes
+nieve,Dust devils,6,65,70,no,Dust Devils
+nieve,Elves,4,1,70,no,
+nieve,Fire giants,9,1,65,no,
+nieve,Fossil Island Wyverns,5,66,60,no,
+nieve,Frost dragons,5,1,85,no,
+nieve,Gargoyles,6,75,80,no,Gargoyles
+nieve,Greater demons,7,1,75,no,
+nieve,Gryphons,7,51,1,yes,Gryphons
+nieve,Hellhounds,8,1,75,no,
+nieve,Kalphite,9,1,15,no,
+nieve,Kurask,3,70,65,no,Kurask
+nieve,Lizardmen,8,1,1,no,
+nieve,Metal dragons,12,1,1,no,
+nieve,Mutated Zygomites,2,57,60,no,
+nieve,Nechryael,7,80,85,no,Nechryael
+nieve,Red dragons,5,1,68,yes,
+nieve,Scabarites,4,1,85,no,
+nieve,Skeletal Wyverns,5,72,70,no,
+nieve,Smoke devils,7,93,85,no,Smoke Devils
+nieve,Spiritual creatures,6,63,60,no,
+nieve,Suqah,8,1,85,no,
+nieve,Trolls,6,1,60,no,
+nieve,Turoth,3,55,60,no,Turoth
+nieve,TzHaar,10,1,1,yes,
+nieve,Vampyres,6,1,1,no,
+nieve,Warped creatures,6,1,1,yes,Warped Creatures
+nieve,Wyrms,7,62,1,no,Wyrms

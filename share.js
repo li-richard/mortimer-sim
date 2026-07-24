@@ -5,9 +5,14 @@
  * (base36) and tiers by rank, so nothing depends on internal ids.
  *
  *   M1~<level>.<tasksDone>.<venators>.<focusRank>~<blocked>~<tiers>~<rules>
+ *     ~<master>.<blockSlots>~<masterBlocks>
  *
  * tiers:  name:idx,idx;name:idx      (names percent-encoded)
  * rules:  idx:k=v,k=v;idx:k=v        (k in p q c x s; v in u d 1..n)
+ * masterBlocks: key:idx,idx;key:idx  (idx into that master's task list)
+ *
+ * The last two sections were added after the first release; codes without
+ * them still decode, so old share codes keep working.
  *
  * No DOM here — test/share-test.js exercises it in node.
  */
@@ -45,8 +50,9 @@
    *   rules: { creatureName: { points|qty|clue|xp|sup: "up"|"down"|<rank> } }
    * }
    * names: the canonical creature-name list (index = id)
+   * masterTasks: { masterKey: [taskName, …] } for the comparison blocks
    */
-  function encode(board, names) {
+  function encode(board, names, masterTasks) {
     const idx = Object.fromEntries(names.map((n, i) => [n, i]));
     const head = [
       board.level, board.tasksDone, board.venators ? 1 : 0, board.focusRank,
@@ -68,18 +74,27 @@
         return parts.length ? n36(idx[n]) + ":" + parts.join(",") : "";
       })
       .filter(Boolean).join(";");
-    return b64urlEncode([MAGIC, head, blocked, tiers, rules].join("~"));
+    const cmp = [board.master || "", board.blockSlots ?? ""].join(".");
+    const mt = masterTasks || {};
+    const mBlocks = Object.entries(board.masterBlocks || {})
+      .map(([k, list]) => {
+        const idx = Object.fromEntries((mt[k] || []).map((n, i) => [n, i]));
+        const ids = (list || []).filter(n => n in idx).map(n => n36(idx[n]));
+        return ids.length ? `${k}:${ids.join(",")}` : "";
+      })
+      .filter(Boolean).join(";");
+    return b64urlEncode([MAGIC, head, blocked, tiers, rules, cmp, mBlocks].join("~"));
   }
 
   /** Returns a board object, or throws if the code isn't one of ours. */
-  function decode(code, names) {
+  function decode(code, names, masterTasks) {
     const raw = String(code || "").trim()
       // tolerate a pasted URL or a leading #
       .replace(/^.*[#?]c=/, "").replace(/^#/, "").replace(/[^A-Za-z0-9\-_]/g, "");
     if (!raw) throw new Error("empty code");
     let text;
     try { text = b64urlDecode(raw); } catch (e) { throw new Error("not a valid code"); }
-    const [magic, head = "", blocked = "", tiers = "", rules = ""] = text.split("~");
+    const [magic, head = "", blocked = "", tiers = "", rules = "", cmp = "", mBlocks = ""] = text.split("~");
     if (magic !== MAGIC) throw new Error("not a Mortimer's Ledger code");
 
     const [level, tasksDone, venators, focusRank] = head.split(".");
@@ -122,6 +137,20 @@
         }
       }
       if (Object.keys(r).length) board.rules[name] = r;
+    }
+
+    // comparison settings (absent in pre-comparison codes)
+    const [master, slots] = cmp.split(".");
+    board.master = master || null;
+    board.blockSlots = slots === "" || slots === undefined ? null : clamp(Number(slots), 0, 7, null);
+    board.masterBlocks = {};
+    const mt = masterTasks || {};
+    for (const seg of mBlocks ? mBlocks.split(";") : []) {
+      const [key, list] = seg.split(":");
+      const tasks = mt[key];
+      if (!tasks || !list) continue;
+      const picked = list.split(",").map(p36).map(i => tasks[i]).filter(Boolean);
+      if (picked.length) board.masterBlocks[key] = picked;
     }
     return board;
   }

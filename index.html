@@ -78,6 +78,22 @@
     </div>
 
     <div class="fine" id="fine"></div>
+
+    <div class="versus" id="versus" aria-label="Comparison with Turael skipping">
+      <div class="vs-head">
+        <h3>vs Turael skipping</h3>
+        <div id="master-sel"></div>
+      </div>
+      <table class="vs-table">
+        <thead>
+          <tr><th></th><th>per roll</th><th>rolls</th><th>cost to get there</th></tr>
+        </thead>
+        <tbody id="vs-body"></tbody>
+      </table>
+      <button type="button" class="vs-blocks-btn" id="vs-blocks-btn" aria-expanded="false"></button>
+      <div class="vs-blocks" id="vs-blocks" hidden></div>
+      <p class="vs-note" id="vs-note"></p>
+    </div>
   </aside>
 </main>
 
@@ -99,6 +115,7 @@
 <div id="popover" class="popover" hidden></div>
 
 <script src="data.js"></script>
+<script src="masters.js"></script>
 <script src="math.js"></script>
 <script src="share.js"></script>
 <script src="app.js"></script>

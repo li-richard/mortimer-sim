@@ -15,6 +15,10 @@ const dataSrc = fs.readFileSync(path.join(__dirname, "..", "data.js"), "utf8");
 const TASKS = JSON.parse(dataSrc.match(/const TASKS = (\[[\s\S]*\]);/)[1]);
 const NAMES = TASKS.map(t => t.name);
 
+const mastersSrc = fs.readFileSync(path.join(__dirname, "..", "masters.js"), "utf8");
+const MASTERS = JSON.parse(mastersSrc.match(/const MASTERS = (\{[\s\S]*\});/)[1]);
+const MT = Object.fromEntries(Object.entries(MASTERS).map(([k, v]) => [k, v.tasks.map(t => t.task)]));
+
 // ————— round trip —————
 
 console.log("— round trip —");
@@ -45,6 +49,57 @@ console.log("— round trip —");
   console.log(`     code is ${code.length} chars: ${code.slice(0, 48)}…`);
   check("code is url-safe", /^[A-Za-z0-9\-_]+$/.test(code));
   check("encode is deterministic", encode(board, NAMES) === code);
+}
+
+// ————— comparison settings (master, block slots, per-master blocks) —————
+
+console.log("— comparison settings round trip —");
+{
+  const board = {
+    level: 99, tasksDone: 100, venators: true, focusRank: 1,
+    tiers: [{ name: "A", creatures: ["Hydras"] }, { name: "B", creatures: NAMES.filter(n => n !== "Hydras") }],
+    blocked: [], rules: {},
+    master: "konar", blockSlots: 5,
+    masterBlocks: {
+      duradel: ["Ankou", "Hellhounds"],
+      konar: [MT.konar[0], MT.konar[3]],
+      nieve: [],
+    },
+  };
+  const back = decode(encode(board, NAMES, MT), NAMES, MT);
+  check("selected master survives", back.master === "konar", back.master);
+  check("block slots survive", back.blockSlots === 5, String(back.blockSlots));
+  check("duradel blocks survive", eq(back.masterBlocks.duradel, ["Ankou", "Hellhounds"]), JSON.stringify(back.masterBlocks.duradel));
+  check("konar blocks survive", eq(back.masterBlocks.konar, [MT.konar[0], MT.konar[3]]));
+  check("empty list is omitted", !("nieve" in back.masterBlocks), JSON.stringify(back.masterBlocks));
+  check("per-master lists stay separate",
+    !eq(back.masterBlocks.duradel, back.masterBlocks.konar));
+
+  // a task name that isn't in that master's list is dropped, not crashed on
+  const ghost = { ...board, masterBlocks: { duradel: ["Ankou", "Definitely Not A Task"] } };
+  const g = decode(encode(ghost, NAMES, MT), NAMES, MT);
+  check("unknown master task dropped", eq(g.masterBlocks.duradel, ["Ankou"]), JSON.stringify(g.masterBlocks.duradel));
+}
+
+console.log("— older codes still decode —");
+{
+  // a 5-section code, as produced before the comparison panel existed
+  const legacy = Buffer.from("M1~99.100.1.1~~Top:0;Rest:1~", "utf8").toString("base64url");
+  let back = null, threw = false;
+  try { back = decode(legacy, NAMES, MT); } catch (e) { threw = true; }
+  check("legacy code decodes", !threw);
+  check("legacy tiers intact", back && back.tiers.length === 2);
+  check("legacy master is null", back && back.master === null, back && String(back.master));
+  check("legacy blockSlots is null", back && back.blockSlots === null, back && String(back.blockSlots));
+  check("legacy masterBlocks empty", back && eq(back.masterBlocks, {}));
+  // decoding without the masterTasks argument at all must not throw
+  let ok = true;
+  try { decode(encode({ ...{
+    level: 99, tasksDone: 100, venators: true, focusRank: 1,
+    tiers: [{ name: "A", creatures: NAMES }], blocked: [], rules: {},
+    master: "duradel", blockSlots: 3, masterBlocks: { duradel: ["Ankou"] },
+  } }, NAMES, MT), NAMES); } catch (e) { ok = false; }
+  check("decode without masterTasks is safe", ok);
 }
 
 // ————— tolerant input —————
