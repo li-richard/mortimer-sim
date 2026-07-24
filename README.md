@@ -6,12 +6,14 @@ Source: [Meet Mortimer: Your Newest Slayer Master](https://secure.runescape.com/
 
 ## The app: Mortimer's Ledger
 
-An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). Label each creature **✓ Desired**, **· Neutral**, or **✗ Bad**, block up to 2 (120 pts each), set your Slayer level / offer count (2, or 3 after 100 tasks) / Venators quest status, and it computes:
+An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). Label each creature **✓ Desired**, **· Neutral**, or **✗ Bad**, block up to 2 (120 pts each), set your Slayer level / offer count (2, or 3 after 100 tasks) / Venators quest status / which modifiers you've unlocked (clue at 25 tasks, XP at 50, Superior at 75), and it computes:
 
 - P(next offer contains a desired task), P(neutral at best), P(all offers bad)
 - Expected offers per desired task and average skip cost (100 pts/skip) to reach one
 - Share of completed tasks that are desired under a patient strategy (skip only all-bad offers), and its point cost per task
 - Per-creature chance of appearing in an offer
+
+**Per-task Mortifier rules** (⚙ on each row): every offered task carries exactly one modifier, so for each creature you can declare that a given modifier changes your verdict — **+1 tier** (bad→neutral, neutral→desired), **→ neutral**, or **→ desired**. The editor shows that creature's actual rolled ranges (e.g. Bloodveld's Superior modifier is +100–150%). A creature's effective P(desired)/P(bad) then averages over its applicable modifiers — uniform per the FAQ, independent between the tasks of one offer — and the row chips show the resulting promotion odds. Creatures with no clue table roll from their remaining modifier types.
 
 The math lives in [math.js](math.js) (shared between the browser and node) and enumerates every weighted draw-without-replacement sequence exactly (pool ≤ 29, offers ≤ 3) — no Monte Carlo error. Labels persist in `localStorage`.
 

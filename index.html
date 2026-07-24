@@ -34,8 +34,16 @@
     <label for="venators">Venators</label>
     <button id="venators" class="toggle on" aria-pressed="true">Blood Moon Rises ✓</button>
   </div>
+  <div class="ctl">
+    <label id="unlocks-label">Modifiers unlocked</label>
+    <div class="seg" role="group" aria-labelledby="unlocks-label" id="unlock-seg">
+      <button data-unlock="clue">Clue <small>(25)</small></button>
+      <button data-unlock="xp">XP <small>(50)</small></button>
+      <button data-unlock="sup">Superior <small>(75)</small></button>
+    </div>
+  </div>
   <div class="ctl ctl-end">
-    <button id="reset" class="ghost">Clear labels</button>
+    <button id="reset" class="ghost">Reset ledger</button>
   </div>
 </section>
 
