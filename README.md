@@ -57,6 +57,8 @@ Because **exactly one modifier lands per task**, every figure is a mean over the
 
 Set a **threshold** on any metric to mark which tasks clear your bar; rows that pass are highlighted and the rest dim.
 
+**Click a row to expand it into one line per modifier** — what the task is worth *if that modifier lands*, next to the rule saying where it should send the task, and the tier it ends up in. This is where the averaging on the parent row comes apart: on Araxytes the XP modifier is worth 1.08x the average, and on creatures with a big Superior range the spread is much wider. Base tier is a picker on the parent row, so you can rank by XP/hr and set both the tier and its modifier rules without leaving the table; everything writes straight to your board.
+
 **On kill rates.** The wiki publishes no per-monster kills/hour table, so `scripts/fetch_creature_stats.py` builds one from two wiki sources, in order:
 
 1. **Money making guides** — `default_kph` where a guide covers the task monster (8 creatures). A direct count of kills.

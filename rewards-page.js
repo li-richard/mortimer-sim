@@ -22,12 +22,57 @@ const state = {
   rwSort: "xpPerHour", rwDesc: true,
 };
 
+const expanded = new Set();   // creatures whose modifier rows are open
+
 function load() {
   try {
     const s = JSON.parse(localStorage.getItem(LS_KEY));
     if (s && typeof s === "object") Object.assign(state, s);
   } catch (e) { /* defaults */ }
   if (!state.kph || typeof state.kph !== "object") state.kph = {};
+  if (!state.taskRules || typeof state.taskRules !== "object") state.taskRules = {};
+  // arriving here with no board yet: same three tiers the board page makes
+  if (!Array.isArray(state.tiers) || !state.tiers.length) {
+    state.tiers = [{ id: "t1", name: "Desired" }, { id: "t2", name: "Neutral" }, { id: "t3", name: "Bad" }];
+    state.tierSeq = 3;
+  }
+  if (!state.placement || typeof state.placement !== "object") state.placement = {};
+  if (!state.tierOrder || typeof state.tierOrder !== "object") state.tierOrder = {};
+  const middle = state.tiers[Math.floor((state.tiers.length - 1) / 2)].id;
+  for (const t of TASKS) {
+    if (!state.tiers.some(x => x.id === state.placement[t.name])) state.placement[t.name] = middle;
+  }
+}
+
+/* Move a creature's base tier, keeping tierOrder consistent so the board
+ * page sees exactly what a drag would have produced. */
+function setTier(name, tierId) {
+  if (!state.tiers.some(t => t.id === tierId)) return;
+  for (const list of Object.values(state.tierOrder)) {
+    const i = list.indexOf(name);
+    if (i !== -1) list.splice(i, 1);
+  }
+  state.placement[name] = tierId;
+  (state.tierOrder[tierId] = state.tierOrder[tierId] || []).push(name);
+}
+
+/* Where a modifier sends the task: "" (no effect), up, down, or to:<id> */
+function setRule(name, modKey, value) {
+  const rules = state.taskRules[name] || (state.taskRules[name] = {});
+  if (!value || value === "none") delete rules[modKey];
+  else rules[modKey] = value;
+  if (!Object.keys(rules).length) delete state.taskRules[name];
+}
+
+/* Resolve a rule to the tier it lands in, for the label beside it. */
+function landsIn(name, modKey) {
+  const rule = (state.taskRules[name] || {})[modKey];
+  const base = state.tiers.findIndex(t => t.id === state.placement[name]);
+  if (!rule || base === -1) return base === -1 ? null : state.tiers[base];
+  if (rule === "up") return state.tiers[Math.max(0, base - 1)];
+  if (rule === "down") return state.tiers[Math.min(state.tiers.length - 1, base + 1)];
+  if (rule.startsWith("to:")) return state.tiers.find(t => t.id === rule.slice(3)) || null;
+  return state.tiers[base];
 }
 
 function save() {
@@ -38,6 +83,9 @@ function save() {
     kph: state.kph, rwMetric: state.rwMetric, rwThreshold: state.rwThreshold,
     rwElite: state.rwElite, rwHideMissing: state.rwHideMissing,
     rwSort: state.rwSort, rwDesc: state.rwDesc,
+    // board edits made here belong to the board
+    tiers: state.tiers, tierSeq: state.tierSeq, placement: state.placement,
+    tierOrder: state.tierOrder, taskRules: state.taskRules,
   });
   localStorage.setItem(LS_KEY, JSON.stringify(saved));
 }
@@ -86,6 +134,47 @@ function rowsFor() {
   });
 }
 
+/* One row per modifier: what the task is worth if THAT modifier lands,
+ * next to the rule saying where it should send the task. The averaged
+ * figures on the parent row hide this spread. */
+function modifierRows(r, metric, nTiers) {
+  const split = MortimerRewards.rewardsByModifier(r.task, r.stat, {
+    unlocked: unlockedMods(), eliteCA: state.rwElite, kph: r.kph,
+  });
+  const rules = state.taskRules[r.name] || {};
+  const parentVal = r[metric.val];
+  const digits = metric.val === "heartsPerHour" ? 4 : metric.val === "hoursPerHeart" ? 1 : 0;
+
+  return `<tr class="rw-sub"><td colspan="10"><div class="rw-mods">${split.map(m => {
+    const v = m[metric.val];
+    const ratio = parentVal && isFinite(parentVal) && isFinite(v) && parentVal !== 0 ? v / parentVal : null;
+    const notable = ratio !== null && (ratio > 1.02 || ratio < 0.98);
+    const rule = rules[m.key] || "none";
+    const dest = landsIn(r.name, m.key);
+    const destIdx = dest ? state.tiers.findIndex(t => t.id === dest.id) : -1;
+    const rangeTxt = m.range
+      ? (m.isPercent ? `+${m.range[0]}–${m.range[1]}%`
+         : m.range[0] < 0 ? `${m.range[0]} to ${m.range[1]}` : `+${m.range[0]}–${m.range[1]}`)
+      : "";
+    return `
+      <div class="rw-mod">
+        <span class="rw-mod-name">${esc(m.label)}<small>${rangeTxt}</small></span>
+        <span class="rw-mod-val ${notable ? (ratio > 1 ? "up" : "down") : ""}">
+          ${fmt(v, digits)}${notable ? `<em>${ratio.toFixed(2)}×</em>` : ""}
+        </span>
+        <select class="rw-rule" data-rule-for="${esc(r.name)}" data-mod="${m.key}">
+          <option value="none" ${rule === "none" ? "selected" : ""}>no effect</option>
+          <option value="up" ${rule === "up" ? "selected" : ""}>▲ up one tier</option>
+          <option value="down" ${rule === "down" ? "selected" : ""}>▼ down one tier</option>
+          ${state.tiers.map(x => `<option value="to:${x.id}" ${rule === "to:" + x.id ? "selected" : ""}>→ ${esc(x.name)}</option>`).join("")}
+        </select>
+        <span class="rw-mod-dest" style="color:${destIdx >= 0 ? tierColor(destIdx, nTiers) : "var(--ink-3)"}">${dest ? esc(dest.name) : "—"}</span>
+      </div>`;
+  }).join("")}</div>
+  <p class="rw-mods-note">Values assume that modifier landed. The row above averages them, since exactly one rolls per task.</p>
+  </td></tr>`;
+}
+
 function render() {
   const rows = rowsFor();
   const key = state.rwSort;
@@ -114,13 +203,18 @@ function render() {
     }
     shown++;
     if (passes) passing++;
-    const tierLabel = r.tier
-      ? `<span class="rw-tier" style="color:${tierColor(r.tier.index, nTiers)}">${esc(r.tier.name)}</span>`
-      : `<span class="rw-tier rw-untiered">—</span>`;
+    const open = expanded.has(r.name);
+    const tierLabel = `<select class="rw-tier-sel" data-tier-for="${esc(r.name)}"
+        style="color:${r.tier ? tierColor(r.tier.index, nTiers) : "var(--ink-3)"}"
+        title="Base tier — where this creature sits before its modifier rolls">
+        ${state.tiers.map(x => `<option value="${x.id}" ${r.tier && x.id === r.tier.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}
+      </select>`;
+    const ruleCount = Object.keys(state.taskRules[r.name] || {}).length;
     return `
-    <tr class="${threshold > 0 ? (passes ? "rw-pass" : "rw-fail") : ""}">
-      <th><img class="rw-img" src="assets/creatures/${slug(r.name)}.png" alt="" loading="lazy" onerror="this.remove()">
-        ${esc(r.name)}<small>${r.task.level}</small></th>
+    <tr class="rw-row ${open ? "open" : ""} ${threshold > 0 ? (passes ? "rw-pass" : "rw-fail") : ""}" data-row="${esc(r.name)}">
+      <th><span class="rw-caret">${open ? "▾" : "▸"}</span
+        ><img class="rw-img" src="assets/creatures/${slug(r.name)}.png" alt="" loading="lazy" onerror="this.remove()">
+        ${esc(r.name)}<small>${r.task.level}</small>${ruleCount ? `<span class="rw-rulecount" title="${ruleCount} modifier rule${ruleCount > 1 ? "s" : ""} set">${ruleCount}⇅</span>` : ""}</th>
       <td>${tierLabel}</td>
       <td class="num">${fmt(r.qty)}</td>
       <td class="num">${fmt(r.xpPerTask)}</td>
@@ -134,7 +228,7 @@ function render() {
       <td class="num">${fmt(r.tasksPerHeart)}</td>
       <td class="num">${fmt(r.hoursPerHeart, 1)}</td>
       <td class="num">+${fmt(r.pointsBonus, 1)}</td>
-    </tr>`;
+    </tr>` + (open ? modifierRows(r, metric, nTiers) : "");
   }).join("");
 
   document.querySelectorAll("#rw-table th[data-sort]").forEach(th => {
@@ -171,7 +265,30 @@ function render() {
 
 // ————— events —————
 
+$("rw-body").addEventListener("click", e => {
+  // clicking the row toggles its modifier rows; controls keep their own behaviour
+  if (e.target.closest("select, input, option")) return;
+  const row = e.target.closest("tr[data-row]");
+  if (!row) return;
+  const name = row.dataset.row;
+  if (expanded.has(name)) expanded.delete(name);
+  else expanded.add(name);
+  render();
+});
+
 $("rw-body").addEventListener("change", e => {
+  const tierSel = e.target.closest("select[data-tier-for]");
+  if (tierSel) {
+    setTier(tierSel.dataset.tierFor, tierSel.value);
+    render();
+    return;
+  }
+  const ruleSel = e.target.closest("select[data-rule-for]");
+  if (ruleSel) {
+    setRule(ruleSel.dataset.ruleFor, ruleSel.dataset.mod, ruleSel.value);
+    render();
+    return;
+  }
   const inp = e.target.closest("input[data-kph]");
   if (!inp) return;
   const name = inp.dataset.kph;

@@ -83,7 +83,51 @@
     };
   }
 
-  const api = { rewards, heartPerSuperior, applicableMods, SUPERIOR_SPAWN, SUPERIOR_SPAWN_ELITE_CA };
+  const MOD_LABELS = {
+    points: "Slayer points", qty: "Task size", clue: "Clue scrolls",
+    xp: "Slayer XP", sup: "Superior uniques",
+  };
+
+  /**
+   * The same rewards, but split out per modifier instead of averaged —
+   * what this task is worth GIVEN that modifier landed. The averaged
+   * figures hide a wide spread: a Superior modifier can be worth several
+   * times a points modifier on the same creature.
+   */
+  function rewardsByModifier(task, stat, opts) {
+    const unlocked = (opts && opts.unlocked) || { clue: true, xp: true, sup: true };
+    const spawn = opts && opts.eliteCA ? SUPERIOR_SPAWN_ELITE_CA : SUPERIOR_SPAWN;
+    const kph = (opts && opts.kph) || null;
+
+    const baseQty = (task.assignMin + task.assignMax) / 2;
+    const heart = heartPerSuperior(task.level);
+    const xpPerKill = stat && stat.slayerXp ? Number(stat.slayerXp) : null;
+
+    return applicableMods(task, unlocked).map(m => {
+      const range = m === "points" ? task.pts : m === "qty" ? task.qty
+        : m === "clue" ? task.clue : m === "xp" ? task.xp : task.sup;
+      const qty = baseQty + (m === "qty" ? mid(task.qty) : 0);
+      const xpMult = 1 + (m === "xp" ? mid(task.xp) / 100 : 0);
+      const supMult = 1 + (m === "sup" ? mid(task.sup) / 100 : 0);
+      const heartsPerTask = qty * spawn * heart * supMult;
+      return {
+        key: m,
+        label: MOD_LABELS[m],
+        range,
+        isPercent: m === "clue" || m === "xp" || m === "sup",
+        qty,
+        xpPerTask: xpPerKill === null ? null : qty * xpPerKill * xpMult,
+        xpPerHour: kph && xpPerKill !== null ? kph * xpPerKill * xpMult : null,
+        heartsPerTask,
+        heartsPerHour: kph ? kph * spawn * heart * supMult : null,
+        tasksPerHeart: heartsPerTask > 0 ? 1 / heartsPerTask : Infinity,
+        hoursPerHeart: kph && heartsPerTask > 0 ? 1 / (kph * spawn * heart * supMult) : null,
+        pointsBonus: m === "points" ? mid(task.pts) : 0,
+      };
+    });
+  }
+
+  const api = { rewards, rewardsByModifier, heartPerSuperior, applicableMods, MOD_LABELS, SUPERIOR_SPAWN, SUPERIOR_SPAWN_ELITE_CA };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.MortimerRewards = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

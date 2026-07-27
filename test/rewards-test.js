@@ -8,7 +8,7 @@
 "use strict";
 const fs = require("fs");
 const path = require("path");
-const { rewards, heartPerSuperior, applicableMods, SUPERIOR_SPAWN } = require("../rewards.js");
+const { rewards, rewardsByModifier, heartPerSuperior, applicableMods, SUPERIOR_SPAWN } = require("../rewards.js");
 
 let failures = 0;
 function check(name, actual, expected, tol = 1e-9) {
@@ -102,6 +102,45 @@ console.log("— progression changes expectations —");
     late.supMult < 1 + (t.sup[0] + t.sup[1]) / 2 / 100 ? 1 : 0, 1);
   check("quantity modifier hits more often when few types exist",
     early.qty > late.qty ? 1 : 0, 1);
+}
+
+// ————— per-modifier split —————
+
+console.log("— per-modifier breakdown —");
+{
+  const t = byName("Araxytes"), s = statOf("Araxytes");
+  const opts = { kph: 1000, unlocked: { clue: true, xp: true, sup: true } };
+  const avg = rewards(t, s, opts);
+  const split = rewardsByModifier(t, s, opts);
+
+  check("one entry per applicable modifier", split.length, applicableMods(t, opts.unlocked).length);
+  check("keys are the modifier types",
+    split.map(r => r.key).join(","), applicableMods(t, opts.unlocked).join(","));
+
+  // the average must sit exactly between the per-modifier values
+  const meanXp = split.reduce((s2, r) => s2 + r.xpPerHour, 0) / split.length;
+  check("averaged XP/hr is the mean of the split", avg.xpPerHour, meanXp, 1e-6);
+  const meanHearts = split.reduce((s2, r) => s2 + r.heartsPerHour, 0) / split.length;
+  check("averaged hearts/hr is the mean of the split", avg.heartsPerHour, meanHearts, 1e-12);
+
+  // only the XP modifier changes XP; only Superior changes hearts
+  const xpRow = split.find(r => r.key === "xp");
+  const ptsRow = split.find(r => r.key === "points");
+  check("XP modifier raises XP/hr", xpRow.xpPerHour > ptsRow.xpPerHour ? 1 : 0, 1);
+  check("XP modifier leaves hearts alone", xpRow.heartsPerHour, ptsRow.heartsPerHour, 1e-15);
+  const supRow = split.find(r => r.key === "sup");
+  check("Superior modifier raises hearts", supRow.heartsPerHour > ptsRow.heartsPerHour ? 1 : 0, 1);
+  check("Superior modifier leaves XP alone", supRow.xpPerHour, ptsRow.xpPerHour, 1e-9);
+  // quantity moves task-scale numbers but not per-hour ones
+  const qtyRow = split.find(r => r.key === "qty");
+  check("quantity modifier changes task size", qtyRow.qty > ptsRow.qty ? 1 : 0, 1);
+  check("quantity modifier leaves XP/hr alone", qtyRow.xpPerHour, ptsRow.xpPerHour, 1e-9);
+
+  // the spread is the point of the feature — it should be visible
+  const best = Math.max(...split.map(r => r.heartsPerHour));
+  const worst = Math.min(...split.map(r => r.heartsPerHour));
+  check("Superior modifier is the best for hearts", supRow.heartsPerHour, best, 1e-15);
+  console.log(`     (hearts/hr spread across modifiers: ${(best / worst).toFixed(2)}x)`);
 }
 
 // ————— data integrity —————
