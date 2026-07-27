@@ -2,7 +2,7 @@
 
 Simulating outcomes for **Mortimer**, the new Old School RuneScape Slayer Master arriving with Wyrmscraig on **July 29, 2026**.
 
-Source: [Meet Mortimer: Your Newest Slayer Master](https://secure.runescape.com/m=news/meet-mortimer-your-newest-slayer-master?oldschool=1) (news post, 24 July 2026).
+Source: [Meet Mortimer: Your Newest Slayer Master](https://secure.runescape.com/m=news/meet-mortimer-your-newest-slayer-master?oldschool=1) (news post, 24 July 2026, revised 27 July).
 
 > ⚠️ **Pre-release data.** Every number here comes from that blog, where Jagex describes the modifier ranges as *proposed*. Wyrmscraig launches 29 July 2026 and the figures may change. Verify against the game before relying on them.
 
@@ -10,7 +10,7 @@ Source: [Meet Mortimer: Your Newest Slayer Master](https://secure.runescape.com/
 
 ## The app: Mortimer's Ledger
 
-An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). The primary interface is a TierMaker-style **tier board** of purely *ordinal* tiers — the top tier is the best, and rank alone carries meaning (no good/bad labels). Every creature starts in the middle tier. Drag chips between tiers (with a live insertion marker; manual order is preserved), drag a tier's ⠿ grip to reorder tiers, and add/rename/delete tiers freely. Chips show each creature's chance of appearing in an offer; clicking one opens a floating card with its stat ranges, a block toggle (max 2, 120 pts each), and its per-modifier rules (tier changes are drag-only). Set your Slayer level, Venators quest status, and **tasks completed for Mortimer** — progression is automatic, so that one number derives which modifier types are unlocked (clue at 25, XP at 50, Superior at 75) and whether you get a third task choice (100). The results card then computes, for whichever tier you focus:
+An interactive, dependency-free static site ([index.html](index.html), [app.js](app.js), [style.css](style.css)). The primary interface is a TierMaker-style **tier board** of purely *ordinal* tiers — the top tier is the best, and rank alone carries meaning (no good/bad labels). Every creature starts in the middle tier. Drag chips between tiers (with a live insertion marker; manual order is preserved), drag a tier's ⠿ grip to reorder tiers, and add/rename/delete tiers freely. Chips show each creature's chance of appearing in an offer; clicking one opens a floating card with its stat ranges, a block toggle (max 2, 120 pts each), and its per-modifier rules (tier changes are drag-only). Set your Slayer level, Venators quest status, and **tasks completed for Mortimer** — progression is automatic, so that one number derives which modifier types are unlocked (clue at 15, Superior at 25, XP at 40) and whether you get a third task choice (50). The results card then computes, for whichever tier you focus:
 
 - P(next offer contains a task landing in the focused tier), and in that tier *or better*
 - The exact distribution of the best tier on offer (one bar segment per tier)
@@ -101,10 +101,12 @@ Model Mortimer's assignment system (task offers, weightings, guaranteed modifier
 |---|---|
 | 0 | Slayer Point modifier |
 | 0 | Task Quantity modifier |
-| 25 | Clue Scroll modifier |
-| 50 | Slayer XP modifier |
-| 75 | Superior Unique (drop-table) modifier |
-| 100 | Third task choice |
+| 15 | Clue Scroll modifier |
+| 25 | Superior Unique (drop-table) modifier |
+| 40 | Slayer XP modifier |
+| 50 | Third task choice |
+
+Thresholds were roughly halved — and Superior moved ahead of XP — in the **27 July feedback update**, which also raised **Venators'** Superior-unique modifier from 50–100% to **200–300%**. That update supersedes the older unlock table and creature table still shown further down the same blog post, and the published spreadsheet has not been revised to match.
 
 Note the 5th modifier boosts the chance to hit the **Superior unique drop table** (e.g. Imbued Heart), not the Superior spawn rate.
 

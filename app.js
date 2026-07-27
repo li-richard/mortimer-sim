@@ -18,21 +18,23 @@ function defaultTiers() {
 }
 
 /* Mortimer's progression is automatic, not opt-in: modifier types and the
- * third task choice unlock at fixed task counts (blog, 24 Jul 2026). */
+ * third task choice unlock at fixed task counts. Thresholds roughly halved
+ * — and Superior moved ahead of XP — in the 27 Jul 2026 feedback update,
+ * which supersedes the older table further down that same blog post. */
 const UNLOCKS = [
-  { key: "clue", at: 25, name: "Clue" },
-  { key: "xp", at: 50, name: "XP" },
-  { key: "sup", at: 75, name: "Superior" },
+  { key: "clue", at: 15, name: "Clue" },
+  { key: "sup", at: 25, name: "Superior" },
+  { key: "xp", at: 40, name: "XP" },
 ];
-const THIRD_CHOICE_AT = 100;
+const THIRD_CHOICE_AT = 50;
 
 /* The progression breakpoints, in order. */
 const PROG = [
   { at: 0, gain: "Points + Quantity", note: "Mortimer starts you with these two modifiers" },
-  { at: 25, gain: "Clue scrolls", note: "Clue Scroll modifier unlocks at 25 tasks" },
-  { at: 50, gain: "Slayer XP", note: "Slayer XP modifier unlocks at 50 tasks" },
-  { at: 75, gain: "Superior uniques", note: "Superior drop-rate modifier unlocks at 75 tasks" },
-  { at: 100, gain: "Third choice", note: "A third task choice unlocks at 100 tasks" },
+  { at: 15, gain: "Clue scrolls", note: "Clue Scroll modifier unlocks at 15 tasks" },
+  { at: 25, gain: "Superior uniques", note: "Superior drop-rate modifier unlocks at 25 tasks" },
+  { at: 40, gain: "Slayer XP", note: "Slayer XP modifier unlocks at 40 tasks" },
+  { at: 50, gain: "Third choice", note: "A third task choice unlocks at 50 tasks" },
 ];
 
 const state = {
@@ -83,7 +85,7 @@ function load() {
     // pre-progression saves toggled unlocks by hand; infer a task count
     if (s.tasksDone === undefined) {
       const u = s.modUnlocked || {};
-      s.tasksDone = s.offers === 3 ? 100 : u.sup ? 75 : u.xp ? 50 : u.clue ? 25 : 0;
+      s.tasksDone = s.offers === 3 ? THIRD_CHOICE_AT : u.xp ? 40 : u.sup ? 25 : u.clue ? 15 : 0;
     }
     delete s.modUnlocked;
     delete s.offers;
