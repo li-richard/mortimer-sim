@@ -6,13 +6,18 @@ const LS_KEY = "mortimer-ledger-v1";
 const STAT_BY_NAME = Object.fromEntries(STATS.map(s => [s.name, s]));
 const $ = id => document.getElementById(id);
 
+/* Each metric is moved by exactly one modifier type, so a task has two
+ * figures a player actually meets: the baseline, and the same task when
+ * that modifier lands. Mortimer shows you the modifier before you choose,
+ * so those two — not their average — are what a decision rests on. */
 const METRICS = [
-  { val: "xpPerHour", label: "XP / hr", step: 1000 },
-  { val: "heartsPerWindow", label: "hearts / 80h", step: 0.1 },
-  { val: "qty", label: "task size", step: 10 },
-  { val: "pointsBonus", label: "points bonus", step: 1 },
+  { val: "xpPerHour", label: "XP / hr", step: 1000, mod: "xp", digits: 0 },
+  { val: "heartsPerWindow", label: "hearts / 80h", step: 0.1, mod: "sup", digits: 2 },
+  { val: "qty", label: "task size", step: 10, mod: "qty", digits: 0 },
+  { val: "pointsBonus", label: "points bonus", step: 1, mod: "points", digits: 1 },
 ];
-const COLUMNS = new Set(["name", "tier", "qty", "kph", "xpPerHour", "heartsPerWindow", "pointsBonus"]);
+const COLUMNS = new Set(["name", "tier", "qty", "kph", "baseVal", "boostVal", "pointsBonus"]);
+const MOD_NAMES = { xp: "Slayer XP", sup: "Superior uniques", qty: "task size", points: "Slayer points" };
 
 const state = {
   level: 99, tasksDone: 100, venators: true, blocked: [],
@@ -115,20 +120,31 @@ const slug = n => n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, 
 const fmt = (v, digits = 0) => v === null || v === undefined || !isFinite(v)
   ? "—" : v.toLocaleString(undefined, { maximumFractionDigits: digits, minimumFractionDigits: digits });
 
-function rowsFor() {
+function rowsFor(metric) {
   const unlocked = unlockedMods();
   return TASKS.map(t => {
     const stat = STAT_BY_NAME[t.name] || {};
     const kph = state.kph[t.name] !== undefined ? state.kph[t.name]
       : (stat.kph ? Number(stat.kph) : null);
-    const r = MortimerRewards.rewards(t, stat, { unlocked, eliteCA: state.rwElite, kph });
+    const opts = { unlocked, eliteCA: state.rwElite, kph };
+    const r = MortimerRewards.rewards(t, stat, opts);
+    const base = MortimerRewards.baselineRewards(t, stat, opts);
+    const split = MortimerRewards.rewardsByModifier(t, stat, opts);
+    const boostedRow = split.find(m => m.key === metric.mod);
     const tier = tierOf(t.name);
     return {
-      task: t, stat, kph, tier,
+      task: t, stat, kph, tier, split,
       edited: state.kph[t.name] !== undefined,
       sourced: !!stat.kph,
       name: t.name,
       tierIdx: tier ? tier.index : 99,
+      // the two figures you actually meet, for the selected metric
+      baseVal: base[metric.val],
+      boostVal: boostedRow ? boostedRow[metric.val] : null,
+      boostRange: boostedRow ? boostedRow.range : null,
+      boostIsPercent: boostedRow ? boostedRow.isPercent : false,
+      landsOneIn: split.length,
+      modUnlocked: split.some(m => m.key === metric.mod),
       ...r,
     };
   });
@@ -191,10 +207,11 @@ function modifierRows(r, metric, nTiers) {
 }
 
 function render() {
-  const rows = rowsFor();
   // a saved sort or metric may point at a column that no longer exists
-  if (!COLUMNS.has(state.rwSort)) state.rwSort = "xpPerHour";
+  if (!COLUMNS.has(state.rwSort)) state.rwSort = "baseVal";
   if (!METRICS.some(m => m.val === state.rwMetric)) state.rwMetric = "xpPerHour";
+  const metricNow = METRICS.find(m => m.val === state.rwMetric) || METRICS[0];
+  const rows = rowsFor(metricNow);
   const key = state.rwSort;
   const dir = state.rwDesc ? -1 : 1;
   rows.sort((a, b) => {
@@ -206,21 +223,23 @@ function render() {
     return (an - bn) * dir;
   });
 
-  const metric = METRICS.find(m => m.val === state.rwMetric) || METRICS[0];
+  const metric = metricNow;
   const threshold = Number(state.rwThreshold) || 0;
   const nTiers = (state.tiers || []).length;
-  let shown = 0, passing = 0;
+  let shown = 0, always = 0, withMod = 0;
 
   $("rw-body").innerHTML = rows.map(r => {
-    const v = r[metric.val];
-    const missing = v === null || !isFinite(v);
+    const missing = r.baseVal === null || !isFinite(r.baseVal);
     if (state.rwHideMissing && missing) return "";
-    const passes = !missing && threshold > 0 && v >= threshold;
-    if (threshold > 0 && !passes) {
-      // still shown, just dimmed — filtering to nothing is worse than ranking
-    }
+    // three answers to "is this worth doing": always, only when its
+    // modifier lands, or not at all
+    const baseClears = !missing && threshold > 0 && r.baseVal >= threshold;
+    const boostClears = !missing && threshold > 0 && r.boostVal !== null && r.boostVal >= threshold;
+    const verdict = threshold <= 0 || missing ? ""
+      : baseClears ? "rw-always" : boostClears ? "rw-withmod" : "rw-fail";
     shown++;
-    if (passes) passing++;
+    if (baseClears) always++;
+    else if (boostClears) withMod++;
     const open = expanded.has(r.name);
     const tierLabel = `<select class="rw-tier-sel" data-tier-for="${esc(r.name)}"
         style="color:${r.tier ? tierColor(r.tier.index, nTiers) : "var(--ink-3)"}"
@@ -228,8 +247,18 @@ function render() {
         ${state.tiers.map(x => `<option value="${x.id}" ${r.tier && x.id === r.tier.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}
       </select>`;
     const ruleCount = Object.keys(state.taskRules[r.name] || {}).length;
+    const rangeTxt = r.boostRange
+      ? (r.boostIsPercent ? `+${r.boostRange[0]}–${r.boostRange[1]}%`
+         : r.boostRange[0] < 0 ? `${r.boostRange[0]} to ${r.boostRange[1]}` : `+${r.boostRange[0]}–${r.boostRange[1]}`)
+      : "";
+    // one column: the plain task, with the modifier's version in brackets
+    const boosted = !r.modUnlocked ? ""
+      : ` <span class="rw-paren ${!baseClears && boostClears ? "rw-cell-pass" : ""}">(${fmt(r.boostVal, metric.digits)})</span>`;
+    const cellTitle = r.modUnlocked
+      ? `plain ${fmt(r.baseVal, metric.digits)} · with the ${MOD_NAMES[metric.mod]} modifier ${fmt(r.boostVal, metric.digits)} (${rangeTxt}, lands 1 in ${r.landsOneIn})`
+      : `the ${MOD_NAMES[metric.mod]} modifier is not unlocked yet`;
     return `
-    <tr class="rw-row ${open ? "open" : ""} ${threshold > 0 ? (passes ? "rw-pass" : "rw-fail") : ""}" data-row="${esc(r.name)}">
+    <tr class="rw-row ${open ? "open" : ""} ${verdict}" data-row="${esc(r.name)}">
       <th><span class="rw-caret">${open ? "▾" : "▸"}</span
         ><img class="rw-img" src="assets/creatures/${slug(r.name)}.png" alt="" loading="lazy" onerror="this.remove()">
         ${esc(r.name)}<small>${r.task.level}</small>${ruleCount ? `<span class="rw-rulecount" title="${ruleCount} modifier rule${ruleCount > 1 ? "s" : ""} set">${ruleCount}⇅</span>` : ""}</th>
@@ -240,11 +269,13 @@ function render() {
           value="${r.kph ?? ""}" data-kph="${esc(r.name)}"
           title="${r.edited ? "your value" : r.sourced ? esc(r.stat.kphSource) : "no wiki source — type your own"}">
       </td>
-      <td class="num">${fmt(r.xpPerHour)}</td>
-      <td class="num" title="one heart per ${fmt(r.tasksPerHeart)} tasks${r.hoursPerHeart ? ` · ${fmt(r.hoursPerHeart, 1)} hours` : ""}">${fmt(r.heartsPerWindow, 2)}</td>
+      <td class="num" title="${esc(cellTitle)}"><span class="${baseClears ? "rw-cell-pass" : ""}">${fmt(r.baseVal, metric.digits)}</span>${boosted}</td>
       <td class="num">+${fmt(r.pointsBonus, 1)}</td>
     </tr>` + (open ? modifierRows(r, metric, nTiers) : "");
   }).join("");
+
+  // the metric column names itself, and says what the bracket means
+  $("rw-h-metric").innerHTML = `${esc(metric.label)} <small>(with ${esc(MOD_NAMES[metric.mod])})</small>`;
 
   document.querySelectorAll("#rw-table th[data-sort]").forEach(th => {
     th.classList.toggle("sorted", th.dataset.sort === key);
@@ -255,8 +286,10 @@ function render() {
   const edited = Object.keys(state.kph).length;
   $("rw-note").innerHTML = [
     threshold > 0
-      ? `<b>${passing}</b> of ${shown} tasks clear ${fmt(threshold, metric.val === "heartsPerWindow" ? 2 : 0)} ${esc(metric.label)}.`
-      : `Set a threshold to mark which tasks are worth doing.`,
+      ? `At ${fmt(threshold, metric.digits)} ${esc(metric.label)}: <b class="rw-k-always">${always}</b> worth doing on any offer, `
+        + `<b class="rw-k-withmod">${withMod}</b> only when the ${esc(MOD_NAMES[metric.mod])} modifier lands, `
+        + `<b>${shown - always - withMod}</b> not worth it.`
+      : `Set a threshold to see which tasks clear it on any offer, and which only clear it when their modifier lands.`,
     `Kill rates: <b>${sourced}</b> sourced from the wiki (money making guides, or Approx. XP/h ÷ XP per kill), <b>${edited}</b> edited by you, <b>${Math.max(0, TASKS.length - sourced - edited)}</b> unknown — per-hour columns stay blank until one is set.`,
     state.tiers.length ? `Tiers come from your board.` : `No board saved yet — set one up on the Tier Board page.`,
   ].join(" ");

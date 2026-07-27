@@ -55,9 +55,17 @@ Because **exactly one modifier lands per task**, every figure is a mean over the
 
 Set a **threshold** on any metric to mark which tasks clear your bar; rows that pass are highlighted and the rest dim.
 
-**Click a row to expand it into one line per modifier** — what the task is worth *if that modifier lands*, next to the rule saying where it should send the task, and the tier it ends up in. Exactly one modifier rolls per task, so each line is one possible outcome and the parent row is their mean.
+**Which tasks are worth doing.** Exactly one modifier lands per task, and Mortimer shows you which one before you choose — so the number that matters isn't an average, it's one of two figures: the plain task, or the task when its modifier lands. The metric column shows both, as `150,035 (165,039)`, where the bracket is that metric's own modifier (Slayer XP for XP/hr, Superior uniques for hearts).
 
-Multipliers are measured against the **unmodified task**, not against that mean, so a multiplier states what the modifier itself is worth: on Warped Creatures the XP modifier reads 1.55× (the midpoint of its +35–75% range) and the Superior modifier reads 3.50× on hearts, while the modifiers that don't touch the metric read "no change". Comparing against the mean instead made those four look like a 0.90× penalty when they do nothing at all. Base tier is a picker on the parent row, so you can rank by XP/hr and set both the tier and its modifier rules without leaving the table; everything writes straight to your board.
+Set a **threshold** and each task gets one of three answers, shown as row highlighting and summarised beneath the table:
+
+- **worth doing on any offer** — the plain figure already clears your bar
+- **worth doing only when its modifier lands** — the bracketed figure clears it but the plain one doesn't, so take it if the offer carries that modifier and skip it otherwise
+- **not worth it** — neither clears
+
+At 60,000 XP/hr that splits your pool into 5 / 3 / 21, and names the conditional ones: Warped Creatures (55,000 → 85,250), Gryphons (50,050 → 67,568) and Dark Beasts (41,924 → 64,983) are only worth taking with the XP modifier attached.
+
+**Click a row to expand it into one line per modifier** — what the task is worth if that modifier lands, next to the rule saying where it should send the task, and the tier it ends up in. Multipliers there are measured against the unmodified task, so they state what the modifier itself is worth rather than how it compares to an average.
 
 **Why 80 hours, not per task.** A per-task figure rewards *long* assignments rather than efficient ones — Hydras topped it on a 150–200 kill task despite only 80 kills/hour. Normalising to a fixed window removes task length from the comparison, and 80 hours is the number Jagex quotes for an imbued heart at the top end (65–80h), so 1.0 reads as "about one heart in the window they're targeting". The metric validates against their own claim: it ranks **Araxytes (1.85) and Smoke Devils (1.68)** first, the two creatures they name as the current heart meta, which the per-task figure got wrong.
 

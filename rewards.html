@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=16">
+<link rel="stylesheet" href="style.css?v=18">
 </head>
 <body>
 
@@ -26,7 +26,7 @@
   <section class="tierboard">
     <div class="tb-head">
       <h2>Task Rewards</h2>
-      <p>Expected value of one task, and per hour where a kill rate is known. Exactly one modifier lands per task, so these are averages over the types that can roll — not every bonus at once.</p>
+      <p>Exactly one modifier lands per task, and Mortimer shows you which before you choose — so each task has two figures that matter: the plain task, and the task when its modifier lands. Set a threshold to see which clear it either way.</p>
     </div>
 
     <div class="controls" aria-label="Reward settings">
@@ -51,22 +51,16 @@
       </div>
     </div>
 
-    <p class="rw-callout">
-      Every <span class="rw-callout-mark">⇅</span> figure below <b>already includes the modifier</b> — averaged over the
-      types that can roll, since exactly one lands per task. Expand a row to see each modifier on its own.
-    </p>
-
     <div class="rw-scroll">
       <table class="rw-table" id="rw-table">
         <thead>
           <tr>
             <th data-sort="name">Creature</th>
             <th data-sort="tier">Tier</th>
-            <th data-sort="qty" class="num" title="Average assignment size, including the quantity modifier when it rolls">Qty <span class="rw-mark">⇅</span></th>
-            <th data-sort="kph" class="num" title="Kills per hour — editable; sourced from the wiki money making guides where one exists">Kills / hr <span class="rw-raw" title="Your input — not affected by modifiers">raw</span></th>
-            <th data-sort="xpPerHour" class="num" title="Includes the XP modifier, averaged over the types that can roll">XP / hr <span class="rw-mark">⇅</span></th>
-            <th data-sort="heartsPerWindow" class="num" title="Includes the Superior-unique modifier. Expected imbued hearts from 80 hours on this task — the window Jagex quotes for Mortimer (65–80h at the top end). Time-normalised, so a long assignment doesn't flatter a slow creature.">Hearts / 80h <span class="rw-mark">⇅</span></th>
-            <th data-sort="pointsBonus" class="num" title="Average Slayer points added by the points modifier, over the types that can roll">+Pts <span class="rw-mark">⇅</span></th>
+            <th data-sort="qty" class="num" title="Average assignment size">Qty</th>
+            <th data-sort="kph" class="num" title="Kills per hour — editable; seeded from the wiki where a guide covers this creature">Kills / hr</th>
+            <th data-sort="baseVal" class="num" id="rw-h-metric" title="The plain task, with the same task in parentheses when its modifier lands"></th>
+            <th data-sort="pointsBonus" class="num" title="Average Slayer points added by the points modifier">+Pts</th>
           </tr>
         </thead>
         <tbody id="rw-body"></tbody>
@@ -91,9 +85,9 @@
   </p>
 </footer>
 
-<script src="data.js?v=16"></script>
-<script src="stats.js?v=16"></script>
-<script src="rewards.js?v=16"></script>
-<script src="rewards-page.js?v=16"></script>
+<script src="data.js?v=18"></script>
+<script src="stats.js?v=18"></script>
+<script src="rewards.js?v=18"></script>
+<script src="rewards-page.js?v=18"></script>
 </body>
 </html>
