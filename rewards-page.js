@@ -255,15 +255,25 @@ function render() {
   const edited = Object.keys(state.kph).length;
   $("rw-note").innerHTML = [
     threshold > 0
-      ? `<b>${passing}</b> of ${shown} tasks clear ${fmt(threshold)} ${esc(metric.label)}.`
+      ? `<b>${passing}</b> of ${shown} tasks clear ${fmt(threshold, metric.val === "heartsPerWindow" ? 2 : 0)} ${esc(metric.label)}.`
       : `Set a threshold to mark which tasks are worth doing.`,
     `Kill rates: <b>${sourced}</b> sourced from the wiki (money making guides, or Approx. XP/h ÷ XP per kill), <b>${edited}</b> edited by you, <b>${Math.max(0, TASKS.length - sourced - edited)}</b> unknown — per-hour columns stay blank until one is set.`,
     state.tiers.length ? `Tiers come from your board.` : `No board saved yet — set one up on the Tier Board page.`,
   ].join(" ");
 
-  // controls
-  $("rw-metric").innerHTML = `<select id="rw-metric-sel" class="rm-sel">${METRICS
-    .map(m => `<option value="${m.val}" ${m.val === state.rwMetric ? "selected" : ""}>${m.label}</option>`).join("")}</select>`;
+  // controls — the metric picker uses the app's listbox, not a native
+  // select, so its open menu is themed too
+  $("rw-metric").innerHTML = `
+    <div class="sel" id="rw-metric-sel">
+      <button type="button" class="sel-btn" aria-haspopup="listbox" aria-expanded="false" aria-label="Metric to judge tasks by">
+        <span class="sel-val">${esc(metric.label)}</span><span class="sel-caret">▾</span>
+      </button>
+      <ul class="sel-menu" role="listbox" aria-label="Metric" hidden>
+        ${METRICS.map(m => `<li role="option" tabindex="-1" data-metric="${m.val}"
+          aria-selected="${m.val === state.rwMetric}" class="${m.val === state.rwMetric ? "on" : ""}">
+          <span class="sel-tick">${m.val === state.rwMetric ? "✓" : ""}</span>${esc(m.label)}</li>`).join("")}
+      </ul>
+    </div>`;
   $("rw-threshold").value = state.rwThreshold;
   $("rw-threshold").step = metric.step;
   const el = $("rw-elite");
@@ -322,13 +332,68 @@ document.querySelector("#rw-table thead").addEventListener("click", e => {
   render();
 });
 
+/* Switching metric changes the units, so a threshold carried over from
+ * the old one is meaningless — 60,000 XP/hr becomes 60,000 hearts. */
+function setMetric(val) {
+  if (val === state.rwMetric) return;
+  state.rwMetric = val;
+  state.rwSort = val;
+  state.rwDesc = true;
+  state.rwThreshold = 0;
+  render();
+}
+
+const metricEl = () => document.getElementById("rw-metric-sel");
+
+$("rw-metric").addEventListener("click", e => {
+  const opt = e.target.closest("li[data-metric]");
+  if (opt) { setMetric(opt.dataset.metric); return; }
+  const btn = e.target.closest(".sel-btn");
+  if (!btn) return;
+  const sel = metricEl();
+  const menu = sel.querySelector(".sel-menu");
+  const open = !menu.hidden;
+  menu.hidden = open;
+  sel.classList.toggle("open", !open);
+  btn.setAttribute("aria-expanded", String(!open));
+  if (!open) (menu.querySelector("li.on") || menu.querySelector("li"))?.focus();
+});
+
+$("rw-metric").addEventListener("keydown", e => {
+  const sel = metricEl();
+  const menu = sel.querySelector(".sel-menu");
+  const items = [...menu.querySelectorAll("li")];
+  if (e.target.closest(".sel-btn") && ["Enter", " ", "ArrowDown"].includes(e.key)) {
+    e.preventDefault();
+    menu.hidden = false;
+    sel.classList.add("open");
+    (menu.querySelector("li.on") || items[0])?.focus();
+    return;
+  }
+  if (menu.hidden) return;
+  const i = items.indexOf(e.target);
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    items[e.key === "ArrowDown" ? Math.min(items.length - 1, i + 1) : Math.max(0, i - 1)]?.focus();
+  } else if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    if (i !== -1) setMetric(items[i].dataset.metric);
+  } else if (e.key === "Escape") {
+    menu.hidden = true;
+    sel.classList.remove("open");
+    sel.querySelector(".sel-btn").focus();
+  }
+});
+
+document.addEventListener("click", e => {
+  const sel = metricEl();
+  if (!sel || e.target.closest("#rw-metric")) return;
+  const menu = sel.querySelector(".sel-menu");
+  if (menu && !menu.hidden) { menu.hidden = true; sel.classList.remove("open"); }
+});
+
 document.addEventListener("change", e => {
-  if (e.target.id === "rw-metric-sel") {
-    state.rwMetric = e.target.value;
-    state.rwSort = e.target.value;
-    state.rwDesc = true;
-    render();
-  } else if (e.target.id === "rw-threshold") {
+  if (e.target.id === "rw-threshold") {
     state.rwThreshold = Math.max(0, Number(e.target.value) || 0);
     render();
   }
