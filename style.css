@@ -681,7 +681,10 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 
 /* ————— rewards page ————— */
 
-.rewards-page { max-width: 1440px; margin: 22px auto 0; padding: 0 20px; }
+/* the board wants width for its chips; this table does not — six columns
+   stretched over 1400px put 300px between a creature and its numbers */
+.rewards-page { max-width: 1080px; margin: 22px auto 0; padding: 0 20px; }
+.rw-table { min-width: 860px; }
 .rw-scroll { overflow-x: auto; }
 .rw-table {
   width: 100%; border-collapse: collapse;
