@@ -23,7 +23,7 @@ const state = {
   level: 99, tasksDone: 100, venators: true, blocked: [],
   tiers: [], placement: {},
   kph: {},                       // creature -> kills/hour override
-  rwMetric: "xpPerHour", rwThreshold: 0, rwElite: false, rwHideMissing: false,
+  rwMetric: "xpPerHour", rwThreshold: 0, rwElite: false,
   rwSort: "xpPerHour", rwDesc: true,
 };
 
@@ -86,7 +86,7 @@ function save() {
   try { saved = JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { /* ignore */ }
   Object.assign(saved, {
     kph: state.kph, rwMetric: state.rwMetric, rwThreshold: state.rwThreshold,
-    rwElite: state.rwElite, rwHideMissing: state.rwHideMissing,
+    rwElite: state.rwElite,
     rwSort: state.rwSort, rwDesc: state.rwDesc,
     // board edits made here belong to the board
     tiers: state.tiers, tierSeq: state.tierSeq, placement: state.placement,
@@ -229,8 +229,8 @@ function render() {
   let shown = 0, always = 0, withMod = 0;
 
   $("rw-body").innerHTML = rows.map(r => {
+    // rows without a kill rate stay listed, just without per-hour figures
     const missing = r.baseVal === null || !isFinite(r.baseVal);
-    if (state.rwHideMissing && missing) return "";
     // three answers to "is this worth doing": always, only when its
     // modifier lands, or not at all
     const baseClears = !missing && threshold > 0 && r.baseVal >= threshold;
@@ -313,10 +313,6 @@ function render() {
   el.classList.toggle("on", state.rwElite);
   el.setAttribute("aria-pressed", String(state.rwElite));
   el.textContent = state.rwElite ? "1/150 · elite CA" : "1/200 · no elite CA";
-  const hb = $("rw-hide");
-  hb.classList.toggle("on", state.rwHideMissing);
-  hb.setAttribute("aria-pressed", String(state.rwHideMissing));
-  hb.textContent = state.rwHideMissing ? "hidden" : "shown";
 
   save();
 }
@@ -433,7 +429,6 @@ document.addEventListener("change", e => {
 });
 
 $("rw-elite").addEventListener("click", () => { state.rwElite = !state.rwElite; render(); });
-$("rw-hide").addEventListener("click", () => { state.rwHideMissing = !state.rwHideMissing; render(); });
 $("rw-reset-kph").addEventListener("click", () => {
   if (!Object.keys(state.kph).length || confirm("Discard your kill-rate edits and go back to the wiki-sourced values?")) {
     state.kph = {};

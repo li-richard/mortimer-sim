@@ -61,8 +61,9 @@ console.log("— hand-computed expectations —");
   // superior midpoint (50+100)/2 = 75%
   check("expected superior multiplier", r.supMult, 1 + 0.75 / 4, 1e-9);
   check("expected points bonus = mid(5,15)/4", r.pointsBonus, 10 / 4, 1e-9);
-  check("xp per task = qty * xp/kill * mult",
-    r.xpPerTask, r.qty * Number(statOf("Crawling Hands").slayerXp) * r.xpMult, 1e-6);
+  const { effectiveXpPerKill: effXp, SUPERIOR_SPAWN: SP } = require("../rewards.js");
+  check("xp per task = qty * effective xp/kill * mult (superiors included)",
+    r.xpPerTask, r.qty * effXp(statOf("Crawling Hands"), SP) * r.xpMult, 1e-6);
 }
 
 // ————— per-hour ignores task length —————
@@ -73,11 +74,32 @@ console.log("— per-hour figures —");
   const a = rewards(t, s, { kph: 230 });
   const b = rewards({ ...t, assignMin: 1, assignMax: 1 }, s, { kph: 230 });
   check("xp/hr is independent of task quantity", a.xpPerHour, b.xpPerHour, 1e-9);
-  check("xp/hr = kph * xp/kill * mult", a.xpPerHour, 230 * Number(s.slayerXp) * a.xpMult, 1e-6);
+  const { effectiveXpPerKill: effXp2, SUPERIOR_SPAWN: SP2 } = require("../rewards.js");
+  check("xp/hr = kph * effective xp/kill * mult", a.xpPerHour, 230 * effXp2(s, SP2) * a.xpMult, 1e-6);
   check("hearts/hr = kph * spawn * heart * mult",
     a.heartsPerHour, 230 * SUPERIOR_SPAWN * heartPerSuperior(t.level) * a.supMult, 1e-12);
   check("no kph means no per-hour figure", rewards(t, s, {}).xpPerHour, null);
   check("hours per heart is the reciprocal", a.hoursPerHeart, 1 / a.heartsPerHour, 1e-9);
+}
+
+// ————— superiors feed XP as well as hearts —————
+
+console.log("— superior XP —");
+{
+  const { effectiveXpPerKill, SUPERIOR_SPAWN, SUPERIOR_SPAWN_ELITE_CA } = require("../rewards.js");
+  const s = statOf("Aberrant Spectres");
+  check("XP per kill includes the superior's share",
+    effectiveXpPerKill(s, SUPERIOR_SPAWN),
+    Number(s.slayerXp) + Number(s.superiorXp) / 200, 1e-12);
+  check("a creature with no superior data falls back to its own XP",
+    effectiveXpPerKill(statOf("Rockslugs"), SUPERIOR_SPAWN),
+    Number(statOf("Rockslugs").slayerXp), 1e-12);
+  check("no Slayer XP at all stays null", effectiveXpPerKill(statOf("Custodian Stalkers"), SUPERIOR_SPAWN), null);
+
+  // the contribution is large enough to matter — double digits, not noise
+  const uplift = effectiveXpPerKill(s, SUPERIOR_SPAWN) / Number(s.slayerXp) - 1;
+  check("superiors are worth >10% of XP", uplift > 0.1 ? 1 : 0, 1);
+  console.log(`     (Aberrant Spectres: ${s.slayerXp} + ${s.superiorXp}/200 = ${effectiveXpPerKill(s, SUPERIOR_SPAWN).toFixed(1)} xp/kill, +${(uplift * 100).toFixed(1)}%)`);
 }
 
 // ————— elite CA raises the superior rate —————
@@ -87,7 +109,18 @@ console.log("— elite Combat Achievements —");
   const t = byName("Araxytes"), s = statOf("Araxytes");
   const base = rewards(t, s, { kph: 100 });
   const elite = rewards(t, s, { kph: 100, eliteCA: true });
-  check("elite is exactly 200/150 better", elite.heartsPerHour / base.heartsPerHour, 200 / 150, 1e-9);
+  check("elite is exactly 200/150 better for hearts", elite.heartsPerHour / base.heartsPerHour, 200 / 150, 1e-9);
+  // and now for XP too, since superiors spawn more often
+  check("elite raises XP/hr as well", elite.xpPerHour > base.xpPerHour ? 1 : 0, 1);
+  const expected = (Number(s.slayerXp) + Number(s.superiorXp) / 150) / (Number(s.slayerXp) + Number(s.superiorXp) / 200);
+  check("XP gain matches the extra superior XP", elite.xpPerHour / base.xpPerHour, expected, 1e-12);
+  console.log(`     (Araxytes XP/hr ${(elite.xpPerHour / base.xpPerHour * 100 - 100).toFixed(1)}% higher with elite CAs)`);
+
+  // the Superior-unique modifier boosts the drop table, not the spawn
+  // rate, so it must leave XP alone
+  const split = rewardsByModifier(t, s, { kph: 100 });
+  check("Superior-unique modifier does not touch XP",
+    split.find(m => m.key === "sup").xpPerHour, split.find(m => m.key === "points").xpPerHour, 1e-9);
 }
 
 // ————— locked modifiers concentrate the odds —————

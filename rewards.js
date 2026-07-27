@@ -34,6 +34,22 @@
 
   const mid = range => (range ? (range[0] + range[1]) / 2 : 0);
 
+  /* Superiors award far more Slayer XP than the creature they replace
+   * (an Abhorrent spectre is 2,500 against an Aberrant spectre's 90), so
+   * the spawn rate feeds XP as well as hearts — worth 11–15% of XP at
+   * 1/200 and more with elite Combat Achievements. Averaged per normal
+   * kill, since a superior replaces one.
+   *
+   * The extra time to kill a superior is NOT deducted from the kill
+   * rate: at 1/200 that is a couple of minutes an hour, far smaller than
+   * the XP being counted, but it makes this a slight over-estimate.  */
+  function effectiveXpPerKill(stat, spawn) {
+    if (!stat || !stat.slayerXp) return null;
+    const normal = Number(stat.slayerXp);
+    const superior = stat.superiorXp ? Number(stat.superiorXp) : 0;
+    return normal + spawn * superior;
+  }
+
   /** Which modifier types can roll on this creature, given progression. */
   function applicableMods(task, unlocked) {
     const mods = ["points", "qty"];
@@ -57,7 +73,7 @@
     const mods = applicableMods(task, unlocked);
     const baseQty = (task.assignMin + task.assignMax) / 2;
     const heart = heartPerSuperior(task.level);
-    const xpPerKill = stat && stat.slayerXp ? Number(stat.slayerXp) : null;
+    const xpPerKill = effectiveXpPerKill(stat, spawn);
 
     // average over which modifier lands, since exactly one does
     let qty = 0, xpMult = 0, supMult = 0, points = 0, clueMult = 0;
@@ -96,12 +112,6 @@
     xp: "Slayer XP", sup: "Superior uniques",
   };
 
-  /**
-   * The same rewards, but split out per modifier instead of averaged —
-   * what this task is worth GIVEN that modifier landed. The averaged
-   * figures hide a wide spread: a Superior modifier can be worth several
-   * times a points modifier on the same creature.
-   */
   /* The unmodified task: what it is worth when the modifier that landed
    * does nothing for the metric you're looking at. Every per-modifier
    * figure is compared against this, so a multiplier says what THAT
@@ -112,7 +122,7 @@
     const kph = (opts && opts.kph) || null;
     const qty = (task.assignMin + task.assignMax) / 2;
     const heart = heartPerSuperior(task.level);
-    const xpPerKill = stat && stat.slayerXp ? Number(stat.slayerXp) : null;
+    const xpPerKill = effectiveXpPerKill(stat, spawn);
     const heartsPerTask = qty * spawn * heart;
     return {
       qty,
@@ -125,6 +135,10 @@
     };
   }
 
+  /**
+   * The same rewards, split out per modifier instead of averaged — what
+   * this task is worth GIVEN that modifier landed.
+   */
   function rewardsByModifier(task, stat, opts) {
     const unlocked = (opts && opts.unlocked) || { clue: true, xp: true, sup: true };
     const spawn = opts && opts.eliteCA ? SUPERIOR_SPAWN_ELITE_CA : SUPERIOR_SPAWN;
@@ -132,7 +146,7 @@
 
     const baseQty = (task.assignMin + task.assignMax) / 2;
     const heart = heartPerSuperior(task.level);
-    const xpPerKill = stat && stat.slayerXp ? Number(stat.slayerXp) : null;
+    const xpPerKill = effectiveXpPerKill(stat, spawn);
 
     return applicableMods(task, unlocked).map(m => {
       const range = m === "points" ? task.pts : m === "qty" ? task.qty
@@ -159,7 +173,7 @@
     });
   }
 
-  const api = { rewards, rewardsByModifier, baselineRewards, heartPerSuperior, applicableMods,
+  const api = { rewards, rewardsByModifier, baselineRewards, heartPerSuperior, effectiveXpPerKill, applicableMods,
                 MOD_LABELS, SUPERIOR_SPAWN, SUPERIOR_SPAWN_ELITE_CA, HEART_WINDOW_HOURS };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.MortimerRewards = api;
