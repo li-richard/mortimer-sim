@@ -143,6 +143,45 @@ console.log("— per-modifier breakdown —");
   console.log(`     (hearts/hr spread across modifiers: ${(best / worst).toFixed(2)}x)`);
 }
 
+// ————— baseline comparison —————
+
+console.log("— baseline (the unmodified task) —");
+{
+  const { baselineRewards } = require("../rewards.js");
+  const t = byName("Warped Creatures"), s = statOf("Warped Creatures");
+  const opts = { kph: Number(s.kph), unlocked: { clue: true, xp: true, sup: true } };
+  const base = baselineRewards(t, s, opts);
+  const split = rewardsByModifier(t, s, opts);
+  const avg = rewards(t, s, opts);
+
+  // the four modifiers that don't touch XP must land exactly on the baseline
+  const noop = split.filter(m => m.key !== "xp");
+  check("modifiers that don't affect XP equal the baseline",
+    noop.every(m => Math.abs(m.xpPerHour - base.xpPerHour) < 1e-9) ? 1 : 0, 1);
+  noop.forEach(m => check(`  ${m.key} is 1.00x baseline`, m.xpPerHour / base.xpPerHour, 1, 1e-12));
+
+  // the XP modifier's multiplier is its own midpoint, not an artefact of averaging
+  const xpRow = split.find(m => m.key === "xp");
+  check("XP modifier multiplier is its midpoint",
+    xpRow.xpPerHour / base.xpPerHour, 1 + (t.xp[0] + t.xp[1]) / 2 / 100, 1e-12);
+  console.log(`     (baseline ${Math.round(base.xpPerHour).toLocaleString()} · XP modifier ${Math.round(xpRow.xpPerHour).toLocaleString()} = ${(xpRow.xpPerHour / base.xpPerHour).toFixed(2)}x)`);
+
+  // the average still sits between baseline and boosted, as expected value
+  check("average is above the baseline", avg.xpPerHour > base.xpPerHour ? 1 : 0, 1);
+  check("average is below the boosted roll", avg.xpPerHour < xpRow.xpPerHour ? 1 : 0, 1);
+
+  // same story for hearts: only the Superior modifier moves them
+  const supRow = split.find(m => m.key === "sup");
+  check("Superior modifier multiplier is its midpoint",
+    supRow.heartsPerWindow / base.heartsPerWindow, 1 + (t.sup[0] + t.sup[1]) / 2 / 100, 1e-12);
+  check("points modifier leaves hearts at baseline",
+    split.find(m => m.key === "points").heartsPerWindow, base.heartsPerWindow, 1e-15);
+  // and the quantity modifier moves task size but not per-hour figures
+  const qtyRow = split.find(m => m.key === "qty");
+  check("quantity modifier is 1.00x baseline per hour", qtyRow.xpPerHour / base.xpPerHour, 1, 1e-12);
+  check("quantity modifier changes task size vs baseline", qtyRow.qty > base.qty ? 1 : 0, 1);
+}
+
 // ————— hearts per 80-hour window —————
 
 console.log("— hearts / 80h —");

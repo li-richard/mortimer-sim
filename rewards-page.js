@@ -142,20 +142,26 @@ function modifierRows(r, metric, nTiers) {
     unlocked: unlockedMods(), eliteCA: state.rwElite, kph: r.kph,
   });
   const rules = state.taskRules[r.name] || {};
-  const parentVal = r[metric.val];
+  // compare against the unmodified task, so a multiplier says what that
+  // modifier is worth — not how it stacks up against the average, which
+  // made every do-nothing modifier look like a penalty
+  const base = MortimerRewards.baselineRewards(r.task, r.stat, {
+    eliteCA: state.rwElite, kph: r.kph,
+  });
+  const baseVal = base[metric.val];
   const digits = metric.val === "heartsPerWindow" ? 2 : 0;
 
   return `<tr class="rw-sub"><td colspan="7"><div class="rw-mods">
     <div class="rw-mod rw-mod-head">
       <span class="rw-mod-name">if this modifier lands…</span>
-      <span class="rw-mod-val">${esc(metric.label)}</span>
+      <span class="rw-mod-val">${esc(metric.label)} <em>vs unmodified</em></span>
       <span>sends the task</span>
       <span>lands in</span>
     </div>
     ${split.map(m => {
     const v = m[metric.val];
-    const ratio = parentVal && isFinite(parentVal) && isFinite(v) && parentVal !== 0 ? v / parentVal : null;
-    const notable = ratio !== null && (ratio > 1.02 || ratio < 0.98);
+    const ratio = baseVal && isFinite(baseVal) && isFinite(v) && baseVal !== 0 ? v / baseVal : null;
+    const notable = ratio !== null && (ratio > 1.005 || ratio < 0.995);
     const rule = rules[m.key] || "none";
     const dest = landsIn(r.name, m.key);
     const destIdx = dest ? state.tiers.findIndex(t => t.id === dest.id) : -1;
@@ -166,8 +172,10 @@ function modifierRows(r, metric, nTiers) {
     return `
       <div class="rw-mod">
         <span class="rw-mod-name">${esc(m.label)}<small>${rangeTxt}</small></span>
-        <span class="rw-mod-val ${notable ? (ratio > 1 ? "up" : "down") : ""}">
-          ${fmt(v, digits)}${notable ? `<em>${ratio.toFixed(2)}×</em>` : ""}
+        <span class="rw-mod-val ${notable ? (ratio > 1 ? "up" : "down") : "flat"}">
+          ${fmt(v, digits)}${ratio === null ? "" : notable
+            ? `<em>${ratio.toFixed(2)}×</em>`
+            : `<em class="rw-noop">no change</em>`}
         </span>
         <select class="rw-rule" data-rule-for="${esc(r.name)}" data-mod="${m.key}">
           <option value="none" ${rule === "none" ? "selected" : ""}>no effect</option>

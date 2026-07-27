@@ -102,6 +102,29 @@
    * figures hide a wide spread: a Superior modifier can be worth several
    * times a points modifier on the same creature.
    */
+  /* The unmodified task: what it is worth when the modifier that landed
+   * does nothing for the metric you're looking at. Every per-modifier
+   * figure is compared against this, so a multiplier says what THAT
+   * modifier is worth rather than how it compares to the average — four
+   * types doing nothing shouldn't all read as a penalty. */
+  function baselineRewards(task, stat, opts) {
+    const spawn = opts && opts.eliteCA ? SUPERIOR_SPAWN_ELITE_CA : SUPERIOR_SPAWN;
+    const kph = (opts && opts.kph) || null;
+    const qty = (task.assignMin + task.assignMax) / 2;
+    const heart = heartPerSuperior(task.level);
+    const xpPerKill = stat && stat.slayerXp ? Number(stat.slayerXp) : null;
+    const heartsPerTask = qty * spawn * heart;
+    return {
+      qty,
+      xpPerTask: xpPerKill === null ? null : qty * xpPerKill,
+      xpPerHour: kph && xpPerKill !== null ? kph * xpPerKill : null,
+      heartsPerTask,
+      heartsPerHour: kph ? kph * spawn * heart : null,
+      heartsPerWindow: kph ? kph * spawn * heart * HEART_WINDOW_HOURS : null,
+      pointsBonus: 0,
+    };
+  }
+
   function rewardsByModifier(task, stat, opts) {
     const unlocked = (opts && opts.unlocked) || { clue: true, xp: true, sup: true };
     const spawn = opts && opts.eliteCA ? SUPERIOR_SPAWN_ELITE_CA : SUPERIOR_SPAWN;
@@ -136,8 +159,8 @@
     });
   }
 
-  const api = { rewards, rewardsByModifier, heartPerSuperior, applicableMods, MOD_LABELS,
-                SUPERIOR_SPAWN, SUPERIOR_SPAWN_ELITE_CA, HEART_WINDOW_HOURS };
+  const api = { rewards, rewardsByModifier, baselineRewards, heartPerSuperior, applicableMods,
+                MOD_LABELS, SUPERIOR_SPAWN, SUPERIOR_SPAWN_ELITE_CA, HEART_WINDOW_HOURS };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.MortimerRewards = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

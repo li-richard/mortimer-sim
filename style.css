@@ -790,3 +790,6 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
   font-family: var(--serif-display); font-size: 10.5px; letter-spacing: 0.06em;
   color: var(--ink-3); padding-bottom: 3px; border-bottom: 1px solid var(--hairline-faint);
 }
+.rw-mod-head .rw-mod-val em { font-style: normal; color: var(--ink-3); opacity: 0.75; }
+.rw-mod-val.flat { color: var(--ink-3); }
+.rw-noop { color: var(--ink-3); opacity: 0.7; }
