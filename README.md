@@ -73,12 +73,12 @@ At 60,000 XP/hr that splits your pool into 5 / 3 / 21, and names the conditional
 
 **On kill rates.** The wiki publishes no per-monster kills/hour table, so `scripts/fetch_creature_stats.py` builds one from two wiki sources, in order:
 
-1. **Money making guides** — `default_kph` where a guide covers the task monster (8 creatures). A direct count of kills.
-2. **[Slayer training](https://oldschool.runescape.wiki/w/Slayer_training) → Task summary** — the "Approx. XP/h" column, divided by that creature's Slayer XP per kill (9 more). These are *effective* kills/hour: the best listed method is used, so multi-target barrage and cannon rates are included, which is right for both XP and superior rolls since every kill rolls for a superior.
+1. **[Slayer training](https://oldschool.runescape.wiki/w/Slayer_training) → Task summary** — the "Approx. XP/h" column, divided by that creature's *effective* XP per kill (normal plus the superior's share, since the published rate is total XP earned). Preferred, because it describes how people actually train the task, and because dividing by the plain XP value would inflate our own XP/hr ~20% above the source. The best listed method is used, so multi-target barrage and cannon rates are included — right for both XP and superior rolls, since every kill rolls for a superior.
+2. **Money making guides** — `default_kph`, used only where no XP/h exists. These describe profit methods, so they can badly misstate a task's XP rate: the Nechryael guide is a *loot run* at 143 kills/hour against the 100,000 XP/h barrage method, and the Basilisks one is for Basilisk *Knights*. Both are excluded by name in the script, and a test asserts no rate comes from a loot run, a boss, or a different monster.
 
 That covers **17 of 29**; the remaining 12 are left blank rather than invented, and per-hour columns stay empty until a rate is set. Every seeded rate carries its source and method in the field's tooltip, and anything you type is marked as yours and saved.
 
-Three sourced rates are approximations flagged in the data: Nechryael uses the Greater Nechryael guide, Basilisks uses Basilisk Knights, and Warped Creatures uses the Warped-creature task rate (the task covers several monsters).
+Warped Creatures uses the Warped-creature task rate, since that task covers several monsters. A test round-trips every derived rate back through the XP model and requires it to reproduce its source within 1% — the worst is 0.33%, from storing kills/hour as a whole number.
 
 Slayer XP per kill comes from the wiki's `infobox_monster` bucket (28 of 29 — Custodian Stalkers has no infobox yet, being new content). Regenerate everything with:
 

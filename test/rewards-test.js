@@ -243,6 +243,37 @@ console.log("— hearts / 80h —");
   console.log(`     (${ranked[0].name} ${ranked[0].v.toFixed(2)} · ${ranked[1].name} ${ranked[1].v.toFixed(2)} hearts per 80h)`);
 }
 
+// ————— derived rates round-trip to their source —————
+
+console.log("— wiki XP/h reconstructs from the derived kill rate —");
+{
+  const { baselineRewards } = require("../rewards.js");
+  let worst = 0, worstName = "";
+  const derived = STATS.filter(s => (s.kphSource || "").includes("XP/h"));
+  check("some rates are derived from Slayer training XP/h", derived.length > 0 ? 1 : 0, 1);
+  for (const s of derived) {
+    const src = Number(s.kphSource.match(/([\d,]+) XP\/h/)[1].replace(/,/g, ""));
+    const ours = baselineRewards(byName(s.name), s, { kph: Number(s.kph) }).xpPerHour;
+    const err = Math.abs(ours / src - 1);
+    if (err > worst) { worst = err; worstName = s.name; }
+  }
+  // the rate is stored as a whole number, so a fraction of a percent is
+  // rounding; anything larger means the XP model and the source disagree
+  check(`every derived rate reproduces its source within 1% (worst: ${worstName})`,
+    worst < 0.01 ? 1 : 0, 1);
+  console.log(`     (worst drift ${(worst * 100).toFixed(2)}% on ${worstName}, from rounding kills/hour)`);
+
+  // the guides we deliberately rejected must not creep back in
+  const bad = STATS.filter(s => /Picking up drops|basilisk knights|Thermonuclear|Alchemical|Abyssal Sire/i.test(s.kphSource || ""));
+  check("no rate comes from a loot run, a boss, or a different monster",
+    bad.length === 0 ? 1 : 0, 1, 0);
+  if (bad.length) console.log("     offenders: " + bad.map(b => `${b.name} <- ${b.kphSource}`).join("; "));
+  // Nechryael specifically: the loot-run guide put it 6x too low
+  const nech = statOf("Nechryael");
+  check("Nechryael uses the barrage XP rate, not the loot run",
+    Number(nech.kph) > 500 ? 1 : 0, 1);
+}
+
 // ————— data integrity —————
 
 console.log("— data —");

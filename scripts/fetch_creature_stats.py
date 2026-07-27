@@ -5,7 +5,7 @@ OSRS Wiki and write data/creature_stats.csv (+ stats.js).
 Three sources, all from the wiki:
   * infobox_monster bucket  -> Slayer XP per kill, HP, combat level
   * Superior slayer monster -> the normal -> superior pairing
-  * money_making_guide      -> kills/hour, where a guide exists
+  * Slayer training + money_making_guide -> kills/hour
 
 Kills/hour is deliberately left blank when no guide covers that creature:
 a wrong rate is worse than an absent one, and the app lets you type your
@@ -26,9 +26,6 @@ ROOT = Path(__file__).resolve().parent.parent
 API = "https://oldschool.runescape.wiki/api.php"
 UA = "mortimer-sim (https://github.com/li-richard/mortimer-sim)"
 
-# Money making guides that genuinely cover the task monster. Anything not
-# listed here has no usable guide — bosses (Thermonuclear Smoke Devil,
-# Alchemical Hydra, Abyssal Sire) are NOT the task monster and are excluded.
 # Task names that don't map to a monster page by simple de-pluralising.
 # Warped Creatures covers several monsters; the Terrorbird is the
 # representative used elsewhere in the app, and all three warped variants
@@ -38,6 +35,15 @@ NAME_OVERRIDES = {
     "Warped Creatures": "Warped Terrorbird",
 }
 
+# Money making guides that genuinely measure killing the task monster.
+# Used only as a fallback where the Slayer training guide has no XP/h,
+# because these describe profit methods rather than XP ones.
+#
+# Deliberately excluded: "Picking up drops from Greater Nechryael" is a
+# loot run rather than a kill rate (143/h against the 100k XP/h barrage
+# method), "Killing basilisk knights" is a different monster, and the
+# boss guides (Thermonuclear Smoke Devil, Alchemical Hydra, Abyssal
+# Sire) are not the task monster at all.
 KPH_OVERRIDES = {
     "Cave Horrors": ("Killing cave horrors", None),
     "Drakes": ("Killing Drakes (Slayer)", None),
@@ -45,8 +51,6 @@ KPH_OVERRIDES = {
     "Hydras": ("Killing hydras", None),
     "Kurask": ("Killing kurasks", None),
     "Wyrms": ("Killing Wyrms (Slayer)", None),
-    "Nechryael": ("Picking up drops from Greater Nechryael", "rate is for Greater Nechryael"),
-    "Basilisks": ("Killing basilisk knights (Slayer)", "rate is for Basilisk Knights"),
 }
 
 
@@ -169,19 +173,30 @@ def main():
         sup_name = next((pairs[c.lower()] for c in cands if c.lower() in pairs), None)
         sup = mons.get((sup_name or "").lower())
 
-        guide, note = KPH_OVERRIDES.get(t["name"], (None, None))
-        rate = kph.get(guide, "") if guide else ""
-        source = f"money making guide: {guide}" if rate else ""
-
-        # fall back to the Slayer training guide's XP/h, converted to kills
-        # via this creature's Slayer XP per kill
         xp_per_kill = (mon or {}).get("slayer_experience")
-        if not rate and xp_per_kill:
+        sup_xp = (sup or {}).get("slayer_experience")
+        rate, source, note = "", "", None
+
+        # Prefer the Slayer training guide's XP/h: it describes how people
+        # actually train the task. Divide by the effective XP per kill —
+        # normal plus the superior's share — because that published rate
+        # is total XP earned, superiors included. Dividing by the plain
+        # value would inflate our XP/hr back above the source by ~20%.
+        if xp_per_kill:
             hit = next((xp_hr[c.lower()] for c in cands if c.lower() in xp_hr), None)
             if hit:
-                rate = round(hit[0] / float(xp_per_kill))
+                effective = float(xp_per_kill) + (float(sup_xp) / 200 if sup_xp else 0)
+                rate = round(hit[0] / effective)
                 source = "Slayer training: {:,} XP/h".format(hit[0]) + (f" ({hit[1]})" if hit[1] else "")
                 note = "derived from XP/h" + (f" using {hit[1]}" if hit[1] else "")
+
+        # otherwise a money making guide that counts kills of this monster
+        if not rate:
+            guide, gnote = KPH_OVERRIDES.get(t["name"], (None, None))
+            if guide and kph.get(guide):
+                rate = kph[guide]
+                source = f"money making guide: {guide}"
+                note = gnote
 
         rows.append({
             "creature": t["name"],
@@ -189,7 +204,7 @@ def main():
             "slayer_xp": xp_per_kill or "",
             "hitpoints": (mon or {}).get("hitpoints") or "",
             "superior": sup_name or "",
-            "superior_slayer_xp": (sup or {}).get("slayer_experience") or "",
+            "superior_slayer_xp": sup_xp or "",
             "kph": rate,
             "kph_source": source,
             "kph_note": note or "",
