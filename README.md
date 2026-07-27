@@ -48,11 +48,9 @@ Because **exactly one modifier lands per task**, every figure is a mean over the
 | Column | How it's derived |
 |---|---|
 | Qty | Average assignment size, plus the quantity modifier weighted by how often it rolls |
-| XP / task | Qty × Slayer XP per kill × expected XP multiplier |
 | Kills / hr | **Editable.** Seeded from the wiki's money making guides where one covers that creature |
 | XP / hr | Kill rate × XP per kill × expected XP multiplier — independent of task length |
-| Heart / sup | `1 / (8 × (200 − ⌊(req+55)²/125⌋))`, exact from the Slayer requirement |
-| Tasks / heart, Hrs / heart | Folds in the 1/200 superior spawn (1/150 with elite CAs) and the Superior-unique modifier |
+| Hearts / task | Qty × 1/200 superior spawn (1/150 with elite CAs) × `1 / (8 × (200 − ⌊(req+55)²/125⌋))` × the Superior-unique modifier. Hover for the same figure as one-heart-per-N-tasks |
 | +Pts | Average Slayer points added by the points modifier |
 
 Set a **threshold** on any metric to mark which tasks clear your bar; rows that pass are highlighted and the rest dim.

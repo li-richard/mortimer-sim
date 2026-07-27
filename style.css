@@ -786,3 +786,7 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 .rw-rule:hover { border-color: var(--gold-dim); color: var(--ink); }
 .rw-mod-dest { font-size: 12px; padding: 4px 0; align-self: center; }
 .rw-mods-note { margin: 6px 0 0 40px; font-size: 11px; color: var(--ink-3); }
+.rw-mod-head > * {
+  font-family: var(--serif-display); font-size: 10.5px; letter-spacing: 0.06em;
+  color: var(--ink-3); padding-bottom: 3px; border-bottom: 1px solid var(--hairline-faint);
+}

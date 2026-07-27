@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=6">
+<link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
 
@@ -58,12 +58,9 @@
             <th data-sort="name">Creature</th>
             <th data-sort="tier">Tier</th>
             <th data-sort="qty" class="num" title="Average assignment size, including the quantity modifier when it rolls">Qty</th>
-            <th data-sort="xpPerTask" class="num" title="Slayer XP for the whole task">XP / task</th>
             <th data-sort="kph" class="num" title="Kills per hour — editable; sourced from the wiki money making guides where one exists">Kills / hr</th>
             <th data-sort="xpPerHour" class="num">XP / hr</th>
-            <th data-sort="heartPerSuperior" class="num" title="Imbued heart chance per superior kill">Heart / sup</th>
-            <th data-sort="tasksPerHeart" class="num" title="Expected tasks for one imbued heart">Tasks / heart</th>
-            <th data-sort="hoursPerHeart" class="num" title="Expected hours for one imbued heart">Hrs / heart</th>
+            <th data-sort="heartsPerTask" class="num" title="Expected imbued hearts from one task: task size × 1/200 superior spawn × heart chance per superior">Hearts / task</th>
             <th data-sort="pointsBonus" class="num" title="Average Slayer points added by the points modifier">+Pts</th>
           </tr>
         </thead>
@@ -89,9 +86,9 @@
   </p>
 </footer>
 
-<script src="data.js?v=6"></script>
-<script src="stats.js?v=6"></script>
-<script src="rewards.js?v=6"></script>
-<script src="rewards-page.js?v=6"></script>
+<script src="data.js?v=8"></script>
+<script src="stats.js?v=8"></script>
+<script src="rewards.js?v=8"></script>
+<script src="rewards-page.js?v=8"></script>
 </body>
 </html>

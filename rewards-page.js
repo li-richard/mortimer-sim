@@ -8,11 +8,11 @@ const $ = id => document.getElementById(id);
 
 const METRICS = [
   { val: "xpPerHour", label: "XP / hr", step: 1000 },
-  { val: "xpPerTask", label: "XP / task", step: 1000 },
-  { val: "heartsPerHour", label: "hearts / hr", step: 0.001 },
+  { val: "heartsPerTask", label: "hearts / task", step: 0.0005 },
   { val: "qty", label: "task size", step: 10 },
   { val: "pointsBonus", label: "points bonus", step: 1 },
 ];
+const COLUMNS = new Set(["name", "tier", "qty", "kph", "xpPerHour", "heartsPerTask", "pointsBonus"]);
 
 const state = {
   level: 99, tasksDone: 100, venators: true, blocked: [],
@@ -143,9 +143,16 @@ function modifierRows(r, metric, nTiers) {
   });
   const rules = state.taskRules[r.name] || {};
   const parentVal = r[metric.val];
-  const digits = metric.val === "heartsPerHour" ? 4 : metric.val === "hoursPerHeart" ? 1 : 0;
+  const digits = metric.val === "heartsPerTask" ? 4 : 0;
 
-  return `<tr class="rw-sub"><td colspan="10"><div class="rw-mods">${split.map(m => {
+  return `<tr class="rw-sub"><td colspan="7"><div class="rw-mods">
+    <div class="rw-mod rw-mod-head">
+      <span class="rw-mod-name">if this modifier lands…</span>
+      <span class="rw-mod-val">${esc(metric.label)}</span>
+      <span>sends the task</span>
+      <span>lands in</span>
+    </div>
+    ${split.map(m => {
     const v = m[metric.val];
     const ratio = parentVal && isFinite(parentVal) && isFinite(v) && parentVal !== 0 ? v / parentVal : null;
     const notable = ratio !== null && (ratio > 1.02 || ratio < 0.98);
@@ -177,6 +184,9 @@ function modifierRows(r, metric, nTiers) {
 
 function render() {
   const rows = rowsFor();
+  // a saved sort or metric may point at a column that no longer exists
+  if (!COLUMNS.has(state.rwSort)) state.rwSort = "xpPerHour";
+  if (!METRICS.some(m => m.val === state.rwMetric)) state.rwMetric = "xpPerHour";
   const key = state.rwSort;
   const dir = state.rwDesc ? -1 : 1;
   rows.sort((a, b) => {
@@ -217,16 +227,13 @@ function render() {
         ${esc(r.name)}<small>${r.task.level}</small>${ruleCount ? `<span class="rw-rulecount" title="${ruleCount} modifier rule${ruleCount > 1 ? "s" : ""} set">${ruleCount}⇅</span>` : ""}</th>
       <td>${tierLabel}</td>
       <td class="num">${fmt(r.qty)}</td>
-      <td class="num">${fmt(r.xpPerTask)}</td>
       <td class="num">
         <input class="rw-kph ${r.edited ? "edited" : r.sourced ? "sourced" : ""}" type="number" min="0" step="5"
           value="${r.kph ?? ""}" data-kph="${esc(r.name)}"
           title="${r.edited ? "your value" : r.sourced ? esc(r.stat.kphSource) : "no wiki source — type your own"}">
       </td>
       <td class="num">${fmt(r.xpPerHour)}</td>
-      <td class="num">1/${fmt(1 / r.heartPerSuperior)}</td>
-      <td class="num">${fmt(r.tasksPerHeart)}</td>
-      <td class="num">${fmt(r.hoursPerHeart, 1)}</td>
+      <td class="num" title="one heart per ${fmt(r.tasksPerHeart)} tasks">${fmt(r.heartsPerTask, 4)}</td>
       <td class="num">+${fmt(r.pointsBonus, 1)}</td>
     </tr>` + (open ? modifierRows(r, metric, nTiers) : "");
   }).join("");
