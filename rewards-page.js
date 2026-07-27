@@ -127,7 +127,7 @@ function render() {
       <td class="num">
         <input class="rw-kph ${r.edited ? "edited" : r.sourced ? "sourced" : ""}" type="number" min="0" step="5"
           value="${r.kph ?? ""}" data-kph="${esc(r.name)}"
-          title="${r.edited ? "your value" : r.sourced ? "from: " + esc(r.stat.kphSource) + (r.stat.kphNote ? " (" + esc(r.stat.kphNote) + ")" : "") : "no wiki guide — type your own"}">
+          title="${r.edited ? "your value" : r.sourced ? esc(r.stat.kphSource) : "no wiki source — type your own"}">
       </td>
       <td class="num">${fmt(r.xpPerHour)}</td>
       <td class="num">1/${fmt(1 / r.heartPerSuperior)}</td>
@@ -148,7 +148,7 @@ function render() {
     threshold > 0
       ? `<b>${passing}</b> of ${shown} tasks clear ${fmt(threshold)} ${esc(metric.label)}.`
       : `Set a threshold to mark which tasks are worth doing.`,
-    `Kill rates: <b>${sourced}</b> sourced from wiki money making guides, <b>${edited}</b> edited by you, <b>${29 - sourced - edited > 0 ? 29 - sourced - edited : 0}</b> unknown — per-hour columns stay blank until one is set.`,
+    `Kill rates: <b>${sourced}</b> sourced from the wiki (money making guides, or Approx. XP/h ÷ XP per kill), <b>${edited}</b> edited by you, <b>${Math.max(0, TASKS.length - sourced - edited)}</b> unknown — per-hour columns stay blank until one is set.`,
     state.tiers.length ? `Tiers come from your board.` : `No board saved yet — set one up on the Tier Board page.`,
   ].join(" ");
 
