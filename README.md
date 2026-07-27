@@ -57,7 +57,14 @@ Because **exactly one modifier lands per task**, every figure is a mean over the
 
 Set a **threshold** on any metric to mark which tasks clear your bar; rows that pass are highlighted and the rest dim.
 
-**On kill rates.** The wiki publishes no per-monster kills/hour, so `scripts/fetch_creature_stats.py` takes them from money making guides where one exists — **8 of 29** — and leaves the rest blank rather than inventing them. Per-hour columns stay empty until a rate is set, and anything you type is marked as yours and saved. Two sourced rates are approximations flagged in the data: Nechryael uses the Greater Nechryael guide, and Basilisks uses Basilisk Knights.
+**On kill rates.** The wiki publishes no per-monster kills/hour table, so `scripts/fetch_creature_stats.py` builds one from two wiki sources, in order:
+
+1. **Money making guides** — `default_kph` where a guide covers the task monster (8 creatures). A direct count of kills.
+2. **[Slayer training](https://oldschool.runescape.wiki/w/Slayer_training) → Task summary** — the "Approx. XP/h" column, divided by that creature's Slayer XP per kill (9 more). These are *effective* kills/hour: the best listed method is used, so multi-target barrage and cannon rates are included, which is right for both XP and superior rolls since every kill rolls for a superior.
+
+That covers **17 of 29**; the remaining 12 are left blank rather than invented, and per-hour columns stay empty until a rate is set. Every seeded rate carries its source and method in the field's tooltip, and anything you type is marked as yours and saved.
+
+Three sourced rates are approximations flagged in the data: Nechryael uses the Greater Nechryael guide, Basilisks uses Basilisk Knights, and Warped Creatures uses the Warped-creature task rate (the task covers several monsters).
 
 Slayer XP per kill comes from the wiki's `infobox_monster` bucket (28 of 29 — Custodian Stalkers has no infobox yet, being new content). Regenerate everything with:
 

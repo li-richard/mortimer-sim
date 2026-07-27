@@ -122,12 +122,42 @@ def mmg_kph():
     return out
 
 
+def slayer_training_xp():
+    """Approx. XP/h per assignment from the wiki's Slayer training guide.
+
+    Values are method-labelled (Magic, cannon, melee...); we keep the best
+    listed rate and its label, since that is what a player optimising for
+    XP would actually do. Returns name -> (xp_per_hour, method).
+    """
+    txt = get({"action": "parse", "page": "Slayer training",
+               "prop": "wikitext", "format": "json"})["parse"]["wikitext"]["*"]
+    start = txt.find("==Task summary==")
+    table = txt[start:txt.find("\n==", start + 10)]
+    out = {}
+    for row in table.split("\n|-")[1:]:
+        cells = [c for c in re.split(r"\n\|(?!\})", row) if c.strip()]
+        if len(cells) < 6:
+            continue
+        m = re.search(r"\[\[([^|\]]+)(?:\|([^\]]+))?\]\]", cells[0])
+        if not m:
+            continue
+        name = (m.group(2) or m.group(1)).strip()
+        cell = re.sub(r"<br\s*/?>", " ", cells[-1])
+        vals = [(int(v.replace(",", "")), (lbl or "").strip())
+                for v, lbl in re.findall(r"([\d][\d,]{3,})\s*(?:\(([^)]*)\))?", cell)]
+        if vals:
+            out[name.lower()] = max(vals, key=lambda v: v[0])
+    return out
+
+
 def main():
     tasks = json.loads(re.search(r"const TASKS = (\[[\s\S]*\]);",
                                  (ROOT / "data.js").read_text()).group(1))
     print(f"resolving stats for {len(tasks)} creatures…")
     mons, pairs, kph = monsters_by_name(), superior_pairs(), mmg_kph()
-    print(f"  {len(mons)} monsters · {len(pairs)} superior pairs · {len(kph)} kill-rate guides")
+    xp_hr = slayer_training_xp()
+    print(f"  {len(mons)} monsters · {len(pairs)} superior pairs · "
+          f"{len(kph)} kill-rate guides · {len(xp_hr)} XP/h entries")
 
     rows = []
     for t in tasks:
@@ -140,15 +170,28 @@ def main():
         sup = mons.get((sup_name or "").lower())
 
         guide, note = KPH_OVERRIDES.get(t["name"], (None, None))
+        rate = kph.get(guide, "") if guide else ""
+        source = f"money making guide: {guide}" if rate else ""
+
+        # fall back to the Slayer training guide's XP/h, converted to kills
+        # via this creature's Slayer XP per kill
+        xp_per_kill = (mon or {}).get("slayer_experience")
+        if not rate and xp_per_kill:
+            hit = next((xp_hr[c.lower()] for c in cands if c.lower() in xp_hr), None)
+            if hit:
+                rate = round(hit[0] / float(xp_per_kill))
+                source = "Slayer training: {:,} XP/h".format(hit[0]) + (f" ({hit[1]})" if hit[1] else "")
+                note = "derived from XP/h" + (f" using {hit[1]}" if hit[1] else "")
+
         rows.append({
             "creature": t["name"],
             "slayer_level": t["level"],
-            "slayer_xp": (mon or {}).get("slayer_experience") or "",
+            "slayer_xp": xp_per_kill or "",
             "hitpoints": (mon or {}).get("hitpoints") or "",
             "superior": sup_name or "",
             "superior_slayer_xp": (sup or {}).get("slayer_experience") or "",
-            "kph": kph.get(guide, "") if guide else "",
-            "kph_source": guide or "",
+            "kph": rate,
+            "kph_source": source,
             "kph_note": note or "",
         })
         flag = "" if rows[-1]["slayer_xp"] else "   <- no monster match"

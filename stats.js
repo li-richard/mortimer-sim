@@ -77,9 +77,9 @@ const STATS = [
     "hp": 134,
     "superior": "Insatiable Bloodveld",
     "superiorXp": 2900,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 746,
+    "kphSource": "Slayer training: 100,000 XP/h (Cannon and Venator Bow)",
+    "kphNote": "derived from XP/h using Cannon and Venator Bow"
   },
   {
     "name": "Gryphons",
@@ -87,9 +87,9 @@ const STATS = [
     "hp": 110,
     "superior": "Dire gryphon",
     "superiorXp": 2800,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 455,
+    "kphSource": "Slayer training: 50,000 XP/h",
+    "kphNote": "derived from XP/h"
   },
   {
     "name": "Jellies",
@@ -127,9 +127,9 @@ const STATS = [
     "hp": 200,
     "superior": "Mutated terrorbird",
     "superiorXp": 3200,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 275,
+    "kphSource": "Slayer training: 55,000 XP/h (Cannon)",
+    "kphNote": "derived from XP/h using Cannon"
   },
   {
     "name": "Cave Horrors",
@@ -138,7 +138,7 @@ const STATS = [
     "superior": "Cave abomination",
     "superiorXp": 1300,
     "kph": 300,
-    "kphSource": "Killing cave horrors",
+    "kphSource": "money making guide: Killing cave horrors",
     "kphNote": null
   },
   {
@@ -147,9 +147,9 @@ const STATS = [
     "hp": 90,
     "superior": "Abhorrent spectre",
     "superiorXp": 2500,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 389,
+    "kphSource": "Slayer training: 35,000 XP/h",
+    "kphNote": "derived from XP/h"
   },
   {
     "name": "Basilisks",
@@ -158,7 +158,7 @@ const STATS = [
     "superior": "Monstrous basilisk",
     "superiorXp": 1700,
     "kph": 85,
-    "kphSource": "Killing basilisk knights (Slayer)",
+    "kphSource": "money making guide: Killing basilisk knights (Slayer)",
     "kphNote": "rate is for Basilisk Knights"
   },
   {
@@ -168,7 +168,7 @@ const STATS = [
     "superior": "Shadow wyrm",
     "superiorXp": 3520,
     "kph": 150,
-    "kphSource": "Killing Wyrms (Slayer)",
+    "kphSource": "money making guide: Killing Wyrms (Slayer)",
     "kphNote": null
   },
   {
@@ -177,9 +177,9 @@ const STATS = [
     "hp": 130,
     "superior": "Choke devil",
     "superiorXp": 3000,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 846,
+    "kphSource": "Slayer training: 110,000 XP/h (Magic)",
+    "kphNote": "derived from XP/h using Magic"
   },
   {
     "name": "Kurask",
@@ -188,7 +188,7 @@ const STATS = [
     "superior": "King kurask",
     "superiorXp": 2767.4,
     "kph": 180,
-    "kphSource": "Killing kurasks",
+    "kphSource": "money making guide: Killing kurasks",
     "kphNote": null
   },
   {
@@ -208,7 +208,7 @@ const STATS = [
     "superior": "Marble gargoyle",
     "superiorXp": 2768,
     "kph": 230,
-    "kphSource": "Killing gargoyles",
+    "kphSource": "money making guide: Killing gargoyles",
     "kphNote": null
   },
   {
@@ -228,7 +228,7 @@ const STATS = [
     "superior": "Nechryarch",
     "superiorXp": 3280,
     "kph": 143,
-    "kphSource": "Picking up drops from Greater Nechryael",
+    "kphSource": "money making guide: Picking up drops from Greater Nechryael",
     "kphNote": "rate is for Greater Nechryael"
   },
   {
@@ -238,7 +238,7 @@ const STATS = [
     "superior": "Guardian Drake",
     "superiorXp": 7087,
     "kph": 90,
-    "kphSource": "Killing Drakes (Slayer)",
+    "kphSource": "money making guide: Killing Drakes (Slayer)",
     "kphNote": null
   },
   {
@@ -247,9 +247,9 @@ const STATS = [
     "hp": 150,
     "superior": "Greater abyssal demon",
     "superiorXp": 4200,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 533,
+    "kphSource": "Slayer training: 80,000 XP/h (Magic)",
+    "kphNote": "derived from XP/h using Magic"
   },
   {
     "name": "Dark Beasts",
@@ -257,9 +257,9 @@ const STATS = [
     "hp": 220,
     "superior": "Night beast",
     "superiorXp": 6462,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 186,
+    "kphSource": "Slayer training: 42,000 XP/h",
+    "kphNote": "derived from XP/h"
   },
   {
     "name": "Araxytes",
@@ -267,9 +267,9 @@ const STATS = [
     "hp": 100,
     "superior": "Dreadborn Araxyte",
     "superiorXp": 4462.5,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 1000,
+    "kphSource": "Slayer training: 100,000 XP/h (Cannon and Venator bow)",
+    "kphNote": "derived from XP/h using Cannon and Venator bow"
   },
   {
     "name": "Smoke Devils",
@@ -277,9 +277,9 @@ const STATS = [
     "hp": 185,
     "superior": "Nuclear smoke devil",
     "superiorXp": 2400,
-    "kph": null,
-    "kphSource": null,
-    "kphNote": null
+    "kph": 811,
+    "kphSource": "Slayer training: 150,000 XP/h (Magic)",
+    "kphNote": "derived from XP/h using Magic"
   },
   {
     "name": "Hydras",
@@ -288,7 +288,7 @@ const STATS = [
     "superior": "Colossal hydra",
     "superiorXp": 8625,
     "kph": 80,
-    "kphSource": "Killing hydras",
+    "kphSource": "money making guide: Killing hydras",
     "kphNote": null
   }
 ];
