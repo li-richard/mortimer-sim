@@ -796,3 +796,21 @@ input.tier-name:focus { outline: 1px solid var(--hairline); background: var(--pa
 .rw-mod-head .rw-mod-val em { font-style: normal; color: var(--ink-3); opacity: 0.75; }
 .rw-mod-val.flat { color: var(--ink-3); }
 .rw-noop { color: var(--ink-3); opacity: 0.7; }
+
+/* make it obvious the table's figures already include the modifier */
+.rw-callout {
+  /* plain text flow — flex made every inline child its own column */
+  margin: 0 0 10px; padding: 9px 12px;
+  background: rgba(211,167,85,0.06);
+  border: 1px solid var(--hairline-faint); border-left: 2px solid var(--gold-dim);
+  border-radius: 3px;
+  font-size: 12.5px; color: var(--ink-2); line-height: 1.5;
+}
+.rw-callout b { color: var(--gold); font-weight: 500; }
+.rw-callout-mark { color: var(--gold-dim); flex: none; }
+.rw-mark { color: var(--gold-dim); font-size: 10px; }
+.rw-raw {
+  font-family: var(--body); font-size: 9.5px; letter-spacing: 0.04em;
+  color: var(--ink-3); border: 1px solid var(--hairline-faint);
+  border-radius: 2px; padding: 0 3px; cursor: help;
+}
