@@ -28,6 +28,30 @@ function load() {
     if (s && typeof s === "object") Object.assign(state, s);
   } catch (e) { /* defaults */ }
   if (!state.kph || typeof state.kph !== "object") state.kph = {};
+  // visiting this page first, with no board saved yet: start the same
+  // three tiers the board page would create, everything in the middle
+  if (!Array.isArray(state.tiers) || !state.tiers.length) {
+    state.tiers = [{ id: "t1", name: "Desired" }, { id: "t2", name: "Neutral" }, { id: "t3", name: "Bad" }];
+    state.tierSeq = 3;
+  }
+  if (!state.placement || typeof state.placement !== "object") state.placement = {};
+  if (!state.tierOrder || typeof state.tierOrder !== "object") state.tierOrder = {};
+  const middle = state.tiers[Math.floor((state.tiers.length - 1) / 2)].id;
+  for (const t of TASKS) {
+    if (!state.tiers.some(x => x.id === state.placement[t.name])) state.placement[t.name] = middle;
+  }
+}
+
+/* Move a creature to another tier, keeping tierOrder consistent so the
+ * board page sees the change exactly as if you had dragged the chip. */
+function setTier(name, tierId) {
+  if (!state.tiers.some(t => t.id === tierId)) return;
+  for (const list of Object.values(state.tierOrder)) {
+    const i = list.indexOf(name);
+    if (i !== -1) list.splice(i, 1);
+  }
+  state.placement[name] = tierId;
+  (state.tierOrder[tierId] = state.tierOrder[tierId] || []).push(name);
 }
 
 function save() {
@@ -38,6 +62,9 @@ function save() {
     kph: state.kph, rwMetric: state.rwMetric, rwThreshold: state.rwThreshold,
     rwElite: state.rwElite, rwHideMissing: state.rwHideMissing,
     rwSort: state.rwSort, rwDesc: state.rwDesc,
+    // tier edits made here belong to the board
+    tiers: state.tiers, tierSeq: state.tierSeq,
+    placement: state.placement, tierOrder: state.tierOrder,
   });
   localStorage.setItem(LS_KEY, JSON.stringify(saved));
 }
@@ -114,9 +141,11 @@ function render() {
     }
     shown++;
     if (passes) passing++;
-    const tierLabel = r.tier
-      ? `<span class="rw-tier" style="color:${tierColor(r.tier.index, nTiers)}">${esc(r.tier.name)}</span>`
-      : `<span class="rw-tier rw-untiered">—</span>`;
+    const tierLabel = `<select class="rw-tier-sel" data-tier-for="${esc(r.name)}"
+        style="color:${r.tier ? tierColor(r.tier.index, nTiers) : "var(--ink-3)"}"
+        title="Move ${esc(r.name)} to another tier — this updates your board">
+        ${state.tiers.map(x => `<option value="${x.id}" ${r.tier && x.id === r.tier.id ? "selected" : ""}>${esc(x.name)}</option>`).join("")}
+      </select>`;
     return `
     <tr class="${threshold > 0 ? (passes ? "rw-pass" : "rw-fail") : ""}">
       <th><img class="rw-img" src="assets/creatures/${slug(r.name)}.png" alt="" loading="lazy" onerror="this.remove()">
@@ -172,6 +201,12 @@ function render() {
 // ————— events —————
 
 $("rw-body").addEventListener("change", e => {
+  const sel = e.target.closest("select[data-tier-for]");
+  if (sel) {
+    setTier(sel.dataset.tierFor, sel.value);
+    render();
+    return;
+  }
   const inp = e.target.closest("input[data-kph]");
   if (!inp) return;
   const name = inp.dataset.kph;
