@@ -55,7 +55,7 @@ Because **exactly one modifier lands per task**, every figure is a mean over the
 | Tasks / heart, Hrs / heart | Folds in the 1/200 superior spawn (1/150 with elite CAs) and the Superior-unique modifier |
 | +Pts | Average Slayer points added by the points modifier |
 
-Set a **threshold** on any metric to mark which tasks clear your bar; rows that pass are highlighted and the rest dim. The **Tier** column is editable here too — reassigning a creature writes straight to your board, so you can sort by XP/hr and tier as you go, then switch to the Tier Board to see what it did to your offer odds.
+Set a **threshold** on any metric to mark which tasks clear your bar; rows that pass are highlighted and the rest dim.
 
 **On kill rates.** The wiki publishes no per-monster kills/hour table, so `scripts/fetch_creature_stats.py` builds one from two wiki sources, in order:
 
