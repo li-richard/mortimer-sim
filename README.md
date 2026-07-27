@@ -39,6 +39,32 @@ Modelling notes:
 - **Only 16–19 of each master's tasks overlap Mortimer's pool.** The rest (Ankou, Cave Kraken, Hellhounds, …) can't be tiered, so they count as misses — the honest reading of a board that says which creatures you want.
 - Combat level is not modelled; these masters already require high Combat.
 
+## The Rewards page
+
+[rewards.html](rewards.html) puts a number on what each task is actually worth. It reads the same saved board, so your tiers and progression carry over.
+
+Because **exactly one modifier lands per task**, every figure is a mean over the modifier types that can roll on that creature — not every bonus applied at once. Unlocking more types therefore *dilutes* any single one, which the numbers reflect.
+
+| Column | How it's derived |
+|---|---|
+| Qty | Average assignment size, plus the quantity modifier weighted by how often it rolls |
+| XP / task | Qty × Slayer XP per kill × expected XP multiplier |
+| Kills / hr | **Editable.** Seeded from the wiki's money making guides where one covers that creature |
+| XP / hr | Kill rate × XP per kill × expected XP multiplier — independent of task length |
+| Heart / sup | `1 / (8 × (200 − ⌊(req+55)²/125⌋))`, exact from the Slayer requirement |
+| Tasks / heart, Hrs / heart | Folds in the 1/200 superior spawn (1/150 with elite CAs) and the Superior-unique modifier |
+| +Pts | Average Slayer points added by the points modifier |
+
+Set a **threshold** on any metric to mark which tasks clear your bar; rows that pass are highlighted and the rest dim.
+
+**On kill rates.** The wiki publishes no per-monster kills/hour, so `scripts/fetch_creature_stats.py` takes them from money making guides where one exists — **8 of 29** — and leaves the rest blank rather than inventing them. Per-hour columns stay empty until a rate is set, and anything you type is marked as yours and saved. Two sourced rates are approximations flagged in the data: Nechryael uses the Greater Nechryael guide, and Basilisks uses Basilisk Knights.
+
+Slayer XP per kill comes from the wiki's `infobox_monster` bucket (28 of 29 — Custodian Stalkers has no infobox yet, being new content). Regenerate everything with:
+
+```bash
+python3 scripts/fetch_creature_stats.py
+```
+
 ### Share codes
 
 **Copy share code** puts the whole board — tiers and their order, every creature's placement, modifier rules, blocks, Slayer level, tasks completed, Venators and the focused tier — into one url-safe string (~150 characters for a full board). **Paste share code** accepts the bare code, a `#c=…` fragment, or a full URL containing one. Opening `…/index.html#c=<code>` loads that board directly and then cleans the URL, so a code doubles as a share link.
@@ -55,7 +81,7 @@ The codec is [share.js](share.js) (DOM-free, tested by [test/share-test.js](test
 
 ### Tests
 
-`node test/math-test.js && node test/share-test.js`
+`node test/math-test.js && node test/share-test.js && node test/rewards-test.js`
 
 The math suite verifies the odds by independent routes rather than re-running the same enumeration: exact BigInt-rational complementary counting (P(event) via P(complement) over restricted tuples), hypergeometric closed forms for the equal-weights case, term-by-term hand-computed small pools, edge cases, the Σ appear = k invariant, and strategy formulas against truncated expectation series.
 

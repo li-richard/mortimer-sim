@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Rewards — Mortimer’s Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="masthead">
+  <div class="rule-top"></div>
+  <h1>Mortimer’s Ledger</h1>
+  <p class="sub">What each task is actually worth · Wyrmscraig, 29 July</p>
+  <nav class="pagenav">
+    <a href="index.html">Tier Board</a>
+    <a href="rewards.html" class="on">Rewards</a>
+  </nav>
+  <div class="rule-bottom"><span class="rule-gem">◆</span></div>
+</header>
+
+<main class="rewards-page">
+  <section class="tierboard">
+    <div class="tb-head">
+      <h2>Task Rewards</h2>
+      <p>Expected value of one task, and per hour where a kill rate is known. Exactly one modifier lands per task, so these are averages over the types that can roll — not every bonus at once.</p>
+    </div>
+
+    <div class="controls" aria-label="Reward settings">
+      <div class="ctl">
+        <label for="rw-metric">Worth doing by</label>
+        <div id="rw-metric"></div>
+      </div>
+      <div class="ctl">
+        <label for="rw-threshold">At least</label>
+        <input id="rw-threshold" type="number" min="0" step="1000" value="0">
+      </div>
+      <div class="ctl">
+        <label id="rw-elite-label">Superior rate</label>
+        <button id="rw-elite" class="toggle" aria-pressed="false" aria-labelledby="rw-elite-label">1/200 · no elite CA</button>
+      </div>
+      <div class="ctl">
+        <label id="rw-hide-label">Missing rates</label>
+        <button id="rw-hide" class="toggle" aria-pressed="false" aria-labelledby="rw-hide-label">shown</button>
+      </div>
+      <div class="ctl ctl-end">
+        <button id="rw-reset-kph" class="ghost" title="Restore the wiki-sourced kill rates and clear your edits">Reset rates</button>
+      </div>
+    </div>
+
+    <div class="rw-scroll">
+      <table class="rw-table" id="rw-table">
+        <thead>
+          <tr>
+            <th data-sort="name">Creature</th>
+            <th data-sort="tier">Tier</th>
+            <th data-sort="qty" class="num" title="Average assignment size, including the quantity modifier when it rolls">Qty</th>
+            <th data-sort="xpPerTask" class="num" title="Slayer XP for the whole task">XP / task</th>
+            <th data-sort="kph" class="num" title="Kills per hour — editable; sourced from the wiki money making guides where one exists">Kills / hr</th>
+            <th data-sort="xpPerHour" class="num">XP / hr</th>
+            <th data-sort="heartPerSuperior" class="num" title="Imbued heart chance per superior kill">Heart / sup</th>
+            <th data-sort="tasksPerHeart" class="num" title="Expected tasks for one imbued heart">Tasks / heart</th>
+            <th data-sort="hoursPerHeart" class="num" title="Expected hours for one imbued heart">Hrs / heart</th>
+            <th data-sort="pointsBonus" class="num" title="Average Slayer points added by the points modifier">+Pts</th>
+          </tr>
+        </thead>
+        <tbody id="rw-body"></tbody>
+      </table>
+    </div>
+
+    <p class="rw-note" id="rw-note"></p>
+  </section>
+</main>
+
+<footer class="colophon">
+  <p class="warn">Pre-release figures — Jagex calls these numbers proposed, and Wyrmscraig launches 29 July. Verify against the game before relying on them.</p>
+  <p>
+    Heart rate per superior is <code>1 / (8 × (200 − ⌊(req+55)²/125⌋))</code>; superiors spawn 1/200, or 1/150 with elite Combat Achievements.
+    Slayer XP and kill rates come from the <a href="https://oldschool.runescape.wiki">Old School RuneScape Wiki</a>.
+  </p>
+  <p class="credit">
+    Creature art from the <a href="https://oldschool.runescape.wiki">Old School RuneScape Wiki</a>,
+    <a href="https://creativecommons.org/licenses/by-nc-sa/3.0/">CC BY-NC-SA 3.0</a>.
+    Old School RuneScape is a trademark of Jagex Ltd — this is unofficial fan content,
+    not affiliated with or endorsed by Jagex.
+  </p>
+</footer>
+
+<script src="data.js"></script>
+<script src="stats.js"></script>
+<script src="rewards.js"></script>
+<script src="rewards-page.js"></script>
+</body>
+</html>
