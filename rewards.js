@@ -19,6 +19,13 @@
   const SUPERIOR_SPAWN = 1 / 200;
   const SUPERIOR_SPAWN_ELITE_CA = 1 / 150;
 
+  /* The yardstick for heart hunting. Jagex put Mortimer at 65–80 hours for
+   * an imbued heart at the top end, so "hearts in 80 hours" reads directly
+   * against that claim: 1.0 means roughly one heart in the window they
+   * are aiming for. Unlike a per-task figure it is time-normalised, so a
+   * long assignment doesn't flatter a slow creature. */
+  const HEART_WINDOW_HOURS = 80;
+
   /** Imbued heart chance per superior kill, from the creature's Slayer requirement. */
   function heartPerSuperior(slayerReq) {
     const denom = 8 * (200 - Math.floor(Math.pow(slayerReq + 55, 2) / 125));
@@ -74,6 +81,7 @@
       heartPerSuperior: heart,
       heartsPerTask,
       heartsPerHour: kph ? kph * spawn * heart * supMult : null,
+      heartsPerWindow: kph ? kph * spawn * heart * supMult * HEART_WINDOW_HOURS : null,
       tasksPerHeart: heartsPerTask > 0 ? 1 / heartsPerTask : Infinity,
       hoursPerHeart: kph && heartsPerTask > 0 ? 1 / (kph * spawn * heart * supMult) : null,
       pointsBonus: points,
@@ -120,6 +128,7 @@
         xpPerHour: kph && xpPerKill !== null ? kph * xpPerKill * xpMult : null,
         heartsPerTask,
         heartsPerHour: kph ? kph * spawn * heart * supMult : null,
+        heartsPerWindow: kph ? kph * spawn * heart * supMult * HEART_WINDOW_HOURS : null,
         tasksPerHeart: heartsPerTask > 0 ? 1 / heartsPerTask : Infinity,
         hoursPerHeart: kph && heartsPerTask > 0 ? 1 / (kph * spawn * heart * supMult) : null,
         pointsBonus: m === "points" ? mid(task.pts) : 0,
@@ -127,7 +136,8 @@
     });
   }
 
-  const api = { rewards, rewardsByModifier, heartPerSuperior, applicableMods, MOD_LABELS, SUPERIOR_SPAWN, SUPERIOR_SPAWN_ELITE_CA };
+  const api = { rewards, rewardsByModifier, heartPerSuperior, applicableMods, MOD_LABELS,
+                SUPERIOR_SPAWN, SUPERIOR_SPAWN_ELITE_CA, HEART_WINDOW_HOURS };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else global.MortimerRewards = api;
 })(typeof globalThis !== "undefined" ? globalThis : this);

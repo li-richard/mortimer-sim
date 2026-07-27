@@ -143,6 +143,34 @@ console.log("— per-modifier breakdown —");
   console.log(`     (hearts/hr spread across modifiers: ${(best / worst).toFixed(2)}x)`);
 }
 
+// ————— hearts per 80-hour window —————
+
+console.log("— hearts / 80h —");
+{
+  const { HEART_WINDOW_HOURS } = require("../rewards.js");
+  check("window is Jagex's quoted 80 hours", HEART_WINDOW_HOURS, 80);
+  const t = byName("Araxytes"), s = statOf("Araxytes");
+  const r = rewards(t, s, { kph: 1000 });
+  check("is hearts/hr scaled by the window", r.heartsPerWindow, r.heartsPerHour * 80, 1e-12);
+  check("no kill rate means no window figure", rewards(t, s, {}).heartsPerWindow, null);
+  check("agrees with hours-per-heart", r.heartsPerWindow, 80 / r.hoursPerHeart, 1e-9);
+
+  // unlike hearts/task, the window figure is not inflated by task length
+  const long = rewards({ ...t, assignMin: 900, assignMax: 900 }, s, { kph: 1000 });
+  check("task length does not change hearts/80h", long.heartsPerWindow, r.heartsPerWindow, 1e-12);
+  check("task length does change hearts/task", long.heartsPerTask > r.heartsPerTask ? 1 : 0, 1);
+
+  // the metric should reproduce the meta Jagex names: Araxytes and Smoke
+  // Devils are the heart tasks, which hearts/task got wrong
+  const ranked = TASKS
+    .map(x => ({ name: x.name, v: rewards(x, statOf(x.name), { kph: statOf(x.name).kph ? Number(statOf(x.name).kph) : null }).heartsPerWindow }))
+    .filter(x => x.v !== null)
+    .sort((a, b) => b.v - a.v);
+  check("top two are Araxytes and Smoke Devils",
+    ranked.slice(0, 2).map(x => x.name).sort().join(","), "Araxytes,Smoke Devils");
+  console.log(`     (${ranked[0].name} ${ranked[0].v.toFixed(2)} · ${ranked[1].name} ${ranked[1].v.toFixed(2)} hearts per 80h)`);
+}
+
 // ————— data integrity —————
 
 console.log("— data —");

@@ -8,11 +8,11 @@ const $ = id => document.getElementById(id);
 
 const METRICS = [
   { val: "xpPerHour", label: "XP / hr", step: 1000 },
-  { val: "heartsPerTask", label: "hearts / task", step: 0.0005 },
+  { val: "heartsPerWindow", label: "hearts / 80h", step: 0.1 },
   { val: "qty", label: "task size", step: 10 },
   { val: "pointsBonus", label: "points bonus", step: 1 },
 ];
-const COLUMNS = new Set(["name", "tier", "qty", "kph", "xpPerHour", "heartsPerTask", "pointsBonus"]);
+const COLUMNS = new Set(["name", "tier", "qty", "kph", "xpPerHour", "heartsPerWindow", "pointsBonus"]);
 
 const state = {
   level: 99, tasksDone: 100, venators: true, blocked: [],
@@ -143,7 +143,7 @@ function modifierRows(r, metric, nTiers) {
   });
   const rules = state.taskRules[r.name] || {};
   const parentVal = r[metric.val];
-  const digits = metric.val === "heartsPerTask" ? 4 : 0;
+  const digits = metric.val === "heartsPerWindow" ? 2 : 0;
 
   return `<tr class="rw-sub"><td colspan="7"><div class="rw-mods">
     <div class="rw-mod rw-mod-head">
@@ -233,7 +233,7 @@ function render() {
           title="${r.edited ? "your value" : r.sourced ? esc(r.stat.kphSource) : "no wiki source — type your own"}">
       </td>
       <td class="num">${fmt(r.xpPerHour)}</td>
-      <td class="num" title="one heart per ${fmt(r.tasksPerHeart)} tasks">${fmt(r.heartsPerTask, 4)}</td>
+      <td class="num" title="one heart per ${fmt(r.tasksPerHeart)} tasks${r.hoursPerHeart ? ` · ${fmt(r.hoursPerHeart, 1)} hours` : ""}">${fmt(r.heartsPerWindow, 2)}</td>
       <td class="num">+${fmt(r.pointsBonus, 1)}</td>
     </tr>` + (open ? modifierRows(r, metric, nTiers) : "");
   }).join("");

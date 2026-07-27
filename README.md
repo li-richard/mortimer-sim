@@ -50,12 +50,14 @@ Because **exactly one modifier lands per task**, every figure is a mean over the
 | Qty | Average assignment size, plus the quantity modifier weighted by how often it rolls |
 | Kills / hr | **Editable.** Seeded from the wiki's money making guides where one covers that creature |
 | XP / hr | Kill rate × XP per kill × expected XP multiplier — independent of task length |
-| Hearts / task | Qty × 1/200 superior spawn (1/150 with elite CAs) × `1 / (8 × (200 − ⌊(req+55)²/125⌋))` × the Superior-unique modifier. Hover for the same figure as one-heart-per-N-tasks |
+| Hearts / 80h | Expected imbued hearts from 80 hours on the task: kill rate × 1/200 superior spawn (1/150 with elite CAs) × `1 / (8 × (200 − ⌊(req+55)²/125⌋))` × the Superior-unique modifier. Hover for tasks-per-heart and hours-per-heart |
 | +Pts | Average Slayer points added by the points modifier |
 
 Set a **threshold** on any metric to mark which tasks clear your bar; rows that pass are highlighted and the rest dim.
 
 **Click a row to expand it into one line per modifier** — what the task is worth *if that modifier lands*, next to the rule saying where it should send the task, and the tier it ends up in. This is where the averaging on the parent row comes apart: on Araxytes the XP modifier is worth 1.08x the average, and on creatures with a big Superior range the spread is much wider. Base tier is a picker on the parent row, so you can rank by XP/hr and set both the tier and its modifier rules without leaving the table; everything writes straight to your board.
+
+**Why 80 hours, not per task.** A per-task figure rewards *long* assignments rather than efficient ones — Hydras topped it on a 150–200 kill task despite only 80 kills/hour. Normalising to a fixed window removes task length from the comparison, and 80 hours is the number Jagex quotes for an imbued heart at the top end (65–80h), so 1.0 reads as "about one heart in the window they're targeting". The metric validates against their own claim: it ranks **Araxytes (1.85) and Smoke Devils (1.68)** first, the two creatures they name as the current heart meta, which the per-task figure got wrong.
 
 **On kill rates.** The wiki publishes no per-monster kills/hour table, so `scripts/fetch_creature_stats.py` builds one from two wiki sources, in order:
 
